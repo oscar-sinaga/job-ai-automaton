@@ -1,0 +1,5 @@
+{
+  "description": "Positive case: JD closely matches the profile's actual MLOps experience.",
+  "expected_fact_ids": ["ach_1", "ach_2", "ach_3"],
+  "must_not_appear": ["Kubernetes", "AWS", "GCP"]
+}

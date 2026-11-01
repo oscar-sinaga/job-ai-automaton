@@ -1,0 +1,16 @@
+{
+	"manifest_version": 3,
+	"name": "OSCAR Job Copilot",
+	"version": "0.1.0",
+	"description": "Save job postings to OSCAR Job Copilot in one click.",
+	"permissions": ["activeTab", "storage", "scripting"],
+	"host_permissions": ["http://127.0.0.1:8000/*"],
+	"action": {
+		"default_popup": "popup.html"
+	},
+	"options_page": "options.html",
+	"background": {
+		"service_worker": "background.js",
+		"type": "module"
+	}
+}

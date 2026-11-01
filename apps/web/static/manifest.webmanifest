@@ -1,0 +1,20 @@
+{
+	"name": "OSCAR Job Copilot",
+	"short_name": "OSCAR",
+	"description": "Personal job-search operating system.",
+	"start_url": "/",
+	"scope": "/",
+	"display": "standalone",
+	"background_color": "#f8fafc",
+	"theme_color": "#0f172a",
+	"icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }],
+	"share_target": {
+		"action": "/share-target",
+		"method": "GET",
+		"params": {
+			"title": "title",
+			"text": "text",
+			"url": "url"
+		}
+	}
+}

@@ -1,0 +1,11 @@
+MLOps Engineer
+
+We're looking for an MLOps Engineer to help productionize machine learning
+models. You'll build and maintain APIs that serve model predictions, set up
+CI/CD pipelines for model deployment, and work with Docker and PostgreSQL.
+
+Requirements:
+- Strong Python skills
+- Experience deploying ML models to production (FastAPI or similar)
+- Experience with Docker and containerized deployments
+- SQL and data pipeline experience is a plus

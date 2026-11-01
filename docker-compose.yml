@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: oscar
+      POSTGRES_PASSWORD: oscar
+      POSTGRES_DB: oscar
+    ports:
+      # loopback only -- never expose Postgres beyond the machine (docs/11 §3)
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U oscar -d oscar"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:

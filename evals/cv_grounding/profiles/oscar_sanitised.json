@@ -1,0 +1,70 @@
+{
+  "experiences": [
+    {
+      "id": 1,
+      "company": "Acme Analytics",
+      "title": "MLOps Engineer",
+      "start_date": "2022-01-01",
+      "end_date": null,
+      "is_current": true
+    },
+    {
+      "id": 2,
+      "company": "Beta Data Co",
+      "title": "Data Engineer",
+      "start_date": "2019-06-01",
+      "end_date": "2021-12-31",
+      "is_current": false
+    }
+  ],
+  "projects": [
+    { "id": 1, "name": "Credit Scoring Pipeline" }
+  ],
+  "skills": [
+    { "name": "Python" },
+    { "name": "SQL" },
+    { "name": "Docker" }
+  ],
+  "achievements": [
+    {
+      "id": 1,
+      "experience_id": 1,
+      "statement": "Built and maintained production ML scoring APIs serving credit-risk predictions",
+      "metric_value": "reduced p95 latency from 320ms to 90ms",
+      "metric_verified": true,
+      "skill_tags": ["python", "fastapi"],
+      "technology_tags": ["fastapi", "docker", "postgresql"],
+      "domain_tags": ["credit-scoring"]
+    },
+    {
+      "id": 2,
+      "experience_id": 1,
+      "statement": "Set up CI/CD pipelines for model deployment using Docker containers",
+      "metric_value": null,
+      "metric_verified": false,
+      "skill_tags": ["docker", "ci-cd"],
+      "technology_tags": ["docker"],
+      "domain_tags": []
+    },
+    {
+      "id": 3,
+      "experience_id": 2,
+      "statement": "Built ETL pipelines processing daily batch data using SQL and Python",
+      "metric_value": "processed 2 million records per day",
+      "metric_verified": false,
+      "skill_tags": ["python", "sql"],
+      "technology_tags": ["postgresql"],
+      "domain_tags": ["data-engineering"]
+    },
+    {
+      "id": 4,
+      "project_id": 1,
+      "statement": "Built a credit scoring model evaluation pipeline as a personal project",
+      "metric_value": null,
+      "metric_verified": false,
+      "skill_tags": ["python"],
+      "technology_tags": ["scikit-learn"],
+      "domain_tags": ["credit-scoring"]
+    }
+  ]
+}

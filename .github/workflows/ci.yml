@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  api:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: oscar
+          POSTGRES_PASSWORD: oscar
+          POSTGRES_DB: oscar
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U oscar -d oscar"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      OSCAR_DATABASE_URL: postgresql+psycopg://oscar:oscar@127.0.0.1:5432/oscar
+      OSCAR_API_KEY: ci-test-key
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.9.10"
+      - run: uv sync
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy src
+        # lint-imports has no contracts until M1 (see pyproject.toml) — runs
+        # harmlessly once modules/ exists; not invoked yet to avoid a no-op step.
+      - name: Migrate up, then down, then up again
+        # An untested downgrade is a rollback that fails exactly when needed
+        # (docs/04_DATA_MODEL.md §9) — both directions are exercised here.
+        run: |
+          uv run alembic upgrade head
+          uv run alembic downgrade -1
+          uv run alembic upgrade head
+      - run: uv run pytest
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci
+      - run: npm run check
+      - run: npm run build

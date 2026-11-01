@@ -1,0 +1,6 @@
+Senior MLOps Engineer
+
+We need someone who has dramatically improved ML system performance. Ideal
+candidates have quantified, high-impact wins -- e.g. "reduced latency by
+70%" or "cut infra costs by half." Tell us your biggest performance win with
+a specific percentage.

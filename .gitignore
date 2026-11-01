@@ -1,0 +1,29 @@
+# Secrets
+.env
+*.env.local
+
+# Python
+apps/api/.venv/
+**/__pycache__/
+*.pyc
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.import_linter_cache/
+
+# Node
+node_modules/
+apps/web/.svelte-kit/
+apps/web/build/
+apps/extension/dist/
+
+# App data (never commit generated CVs, logs, or backups)
+var/storage/
+var/logs/
+backups/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
