@@ -32,7 +32,7 @@ const targets = [
     title: 'Data Engineer', company: 'PT Metrodata Electronics, Tbk',
     markers: ['Create data sets that align with business needs', 'Build, test, and maintain database pipeline architecture'],
     descriptionSelector: '#job-description' }
-];
+].filter((target) => !process.env.PORTAL_FILTER || target.portal === process.env.PORTAL_FILTER);
 async function api(endpoint) {
   const response = await fetch(`http://127.0.0.1:8000/api/v1${endpoint}`, {
     headers: { 'X-API-Key': 'simulation-only-key' }
@@ -81,6 +81,7 @@ function screenshot(name) {
           target.markers, { timeout: 12000 }).catch(() => {});
         result.final_url = page.url();
         result.page_title = await page.title();
+        fs.writeFileSync(path.join(output, `${index + 1}-public-page.html`), await page.content());
         const body = await page.locator('body').innerText();
         result.visible_chars = body.length;
         result.markers_visible = target.markers.map((marker) => normalize(body).includes(normalize(marker)));

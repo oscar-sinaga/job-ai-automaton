@@ -44,7 +44,8 @@ export function extractJobMetadata(): JobMetadata {
 	const companyName = text(company)
 		|| text(companyElement?.getAttribute('content'))
 		|| (companyElement && property(companyElement, 'name'))
-		|| text(companyElement?.textContent);
+		|| text(companyElement?.textContent)
+		|| text(document.querySelector('.topcard__org-name-link')?.textContent);
 
 	return {
 		jobTitle: text(structured?.title) || property(root, 'title')

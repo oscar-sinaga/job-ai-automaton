@@ -30,8 +30,9 @@ jobs:
           (cd apps/api && uv sync --frozen --python 3.12)
           (cd apps/extension && npm ci && npm run check && npm run build)
           (cd apps/web && npm ci && npx playwright install --with-deps chromium)
-      - name: Probe six public job pages with native extension popup
+      - name: Probe public LinkedIn job pages after company extraction fix with native extension popup
         env:
+          PORTAL_FILTER: LinkedIn
           DEMO_OUTPUT: ${{ runner.temp }}/portal-probe
         run: |
           set -euo pipefail
