@@ -5,7 +5,8 @@
 	"type": "module",
 	"scripts": {
 		"build": "node build.mjs",
-		"check": "tsc --noEmit"
+		"check": "tsc --noEmit",
+		"test:offline": "npm run check && npm run build && node ../../scripts/extension/test-offline.cjs"
 	},
 	"devDependencies": {
 		"@types/chrome": "^0.0.287",

@@ -55,22 +55,23 @@
 				type="button"
 				class="text-xs text-slate-600 underline underline-offset-2"
 				onclick={() => (showPasteText = !showPasteText)}
+				aria-expanded={showPasteText}
+				aria-controls="job-description-editor"
 			>
 				{showPasteText ? 'Hide' : 'Paste full job description (recommended)'}
 			</button>
-			{#if showPasteText}
-				<div>
-					<label for="raw_text" class="block text-xs font-medium text-slate-600"
-						>Job description text</label
-					>
-					<textarea
-						id="raw_text"
-						name="raw_text"
-						rows="6"
-						class="mt-1 w-full rounded border border-slate-300 px-3 py-1.5 text-sm"
-					></textarea>
-				</div>
-			{/if}
+			<!-- Hide the editor without discarding its draft or excluding it from capture. -->
+			<div id="job-description-editor" hidden={!showPasteText}>
+				<label for="raw_text" class="block text-xs font-medium text-slate-600"
+					>Job description text</label
+				>
+				<textarea
+					id="raw_text"
+					name="raw_text"
+					rows="6"
+					class="mt-1 w-full rounded border border-slate-300 px-3 py-1.5 text-sm"
+				></textarea>
+			</div>
 			<button
 				type="submit"
 				class="rounded bg-slate-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-slate-800"

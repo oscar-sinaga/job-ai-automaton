@@ -35,6 +35,8 @@ jobs:
           (cd apps/api && uv sync --frozen --python 3.12)
           (cd apps/extension && npm ci && npm run check && npm run build && cp INSTALL.md dist/ && cd dist && zip -qr ../OSCAR-Extension-0.1.2.zip .)
           (cd apps/web && npm ci && npx playwright install --with-deps chromium && npm run build)
+      - name: Verify deterministic installed-extension regressions
+        run: cd apps/extension && npm run test:offline
       - name: Verify native popup, live pages, duplicates and backend failure
         env:
           API_BASE_URL: http://127.0.0.1:8000/api/v1
