@@ -6,6 +6,16 @@ Not implemented in Milestone 0. Binding design for Milestone 3.
 
 ---
 
+## Current pilot policy — 2026-11-02
+
+[ADR-026](17_DECISION_LOG.md) temporarily narrows the rewording policy described
+below: prompt v2 selects complete stored achievement statements. Valid fact IDs
+alone cannot prove semantic support. Whole-statement matching, parent validation,
+skills validation and validation of manual edits now supplement V1–V6. The owner
+reviews sources before approving each version for export. Source statements and
+presentation details are snapshotted into the version. Free paraphrasing and the
+secondary semantic judge remain future work requiring real-model evaluation.
+
 ## 1. Threat Model
 
 The failure this system exists to prevent: **a plausible, fluent, well-formatted CV bullet that describes something Oscar never did**, submitted to a real employer under his name. Consequences are reputational and potentially disqualifying, and the failure is *invisible* at review time precisely because the output is fluent.

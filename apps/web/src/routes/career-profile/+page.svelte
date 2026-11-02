@@ -322,6 +322,18 @@
 			use:enhance
 			class="mt-2 grid grid-cols-2 gap-2"
 		>
+			<p class="col-span-2 text-xs text-slate-500">CV contact details are saved with each new CV version. Name and email are required for PDF export.</p>
+			{#each ['name', 'email', 'phone', 'linkedin', 'github', 'portfolio'] as field (field)}
+				<label class="text-xs text-slate-600">
+					CV {field}
+					<input
+						name={`cv_${field}`}
+						type={field === 'email' ? 'email' : 'text'}
+						value={String(data.profile.application_profile.links[`cv_${field}`] ?? '')}
+						class="mt-1 w-full rounded border px-2 py-1 text-sm"
+					/>
+				</label>
+			{/each}
 			<input
 				name="notice_period"
 				placeholder="Notice period"

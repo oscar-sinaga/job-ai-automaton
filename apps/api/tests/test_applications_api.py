@@ -132,7 +132,7 @@ async def test_application_links_the_submitted_cv_version(
     fake_llm.queue(
         {
             "summary": {
-                "text": "Engineer.",
+                "text": "Built things",
                 "supporting_fact_ids": [f"ach_{achievement.json()['id']}"],
             },
             "experience": [],

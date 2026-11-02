@@ -29,12 +29,13 @@ from oscar_api.modules.cv.grounding import GroundingContext, fact_id_of, verify_
 from oscar_api.modules.cv.models import CVGenerationRun, CVVersion
 from oscar_api.modules.cv.retrieval import retrieve_facts
 from oscar_api.modules.cv.schemas import CVDraft, GenerateCVRequest, GroundingReport
+from oscar_api.modules.cv.sections import snapshot_sections
 from oscar_api.modules.jobs.models import JobEvent, JobEventType
 from oscar_api.modules.jobs.service import get_job_or_404
 from oscar_api.ports.llm import ContentBlock, LLMProvider, LLMRefusalError
 
-PROMPT_VERSION = "cv_generator/v1"
-_PROMPT_PATH = Path(__file__).resolve().parents[6] / "agents" / "cv_generator" / "prompts" / "v1.md"
+PROMPT_VERSION = "cv_generator/v2"
+_PROMPT_PATH = Path(__file__).resolve().parents[6] / "agents" / "cv_generator" / "prompts" / "v2.md"
 
 
 def _load_instructions() -> str:
@@ -74,16 +75,6 @@ def _next_version_number(session: Session, job_id: int) -> int:
         .all()
     )
     return (max(existing) + 1) if existing else 1
-
-
-def _draft_to_sections(draft: CVDraft) -> dict[str, Any]:
-    return {
-        "summary": draft.summary.model_dump(),
-        "experience": [b.model_dump() for b in draft.experience],
-        "projects": [b.model_dump() for b in draft.projects],
-        "skills": draft.skills,
-        "missing_requirements": draft.missing_requirements,
-    }
 
 
 def _record_run(
@@ -205,7 +196,7 @@ async def generate_cv(
         job_id=job_id,
         version_number=_next_version_number(session, job_id),
         summary_text=cleaned_draft.summary.text or None,
-        sections=_draft_to_sections(cleaned_draft),
+        sections=snapshot_sections(cleaned_draft, profile),
         is_submitted=False,
     )
     session.add(cv_version)

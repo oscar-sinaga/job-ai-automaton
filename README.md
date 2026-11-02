@@ -6,18 +6,20 @@ application and which exact CV version was sent, and see the funnel honestly.
 
 > Automatic where automation is reliable, human-assisted where automation is fragile.
 
-**Status: all five P0 build milestones (M1–M5) are done.** Capture, career profile,
-grounded CV generation, application tracking, and analytics all work end-to-end —
-216 tests passing, migrations verified, both apps type-check and build clean. What's
-left is **Milestone 6: real usage** — populate the career profile with real data, job-hunt
-with the tool, and measure against the V1 Definition of Done. That needs the product
-owner's own time and a real `OPENAI_API_KEY` (CV generation has never been run
-against a real model in this environment — see docs/15 §M3). See
+**Status (2026-11-02): M0–M5 code exists; preparing the first real-usage pilot.**
+The review found gaps in CV grounding, approval, PDF rendering and download.
+The fixes restrict CV claims to stored career statements, validate skills and edits,
+require review before export, preserve application status, and provide a working PDF
+download. The local smoke flow uses example data and a fake model; real-model quality,
+phone capture and the V1 usage targets remain unverified.
+
+Start with **[docs/18_FIRST_REAL_USAGE.md](docs/18_FIRST_REAL_USAGE.md)** for the
+first 3–5 applications, then measure M6 against
 [docs/15_ROADMAP_AND_MILESTONES.md](docs/15_ROADMAP_AND_MILESTONES.md).
 
 ## Start here
 
-- **[docs/README.md](docs/README.md)** — the full design pack (17 documents): PRD, architecture, data model, API design, LLM/grounding design, security, test strategy, risks, and open decisions.
+- **[docs/README.md](docs/README.md)** — the design pack and current pilot guide: PRD, architecture, data model, API design, LLM/grounding design, security, test strategy, risks, and open decisions.
 - **[docs/15_ROADMAP_AND_MILESTONES.md](docs/15_ROADMAP_AND_MILESTONES.md)** — what's built, what's verified vs. not, and what M6 requires.
 - **[OSCAR_Job_Copilot_AI_Agent_Master_Spec_v2.md](OSCAR_Job_Copilot_AI_Agent_Master_Spec_v2.md)** — the source engineering spec.
 - **[OSCAR_Job_Copilot_User_Plan_v2.md](OSCAR_Job_Copilot_User_Plan_v2.md)** — the source product plan (Indonesian).
@@ -40,7 +42,7 @@ export UV_PROJECT_ENVIRONMENT=~/.venvs/oscar-api   # keep the venv off /mnt/c (A
 uv sync
 uv run alembic upgrade head
 uv run uvicorn oscar_api.main:app --reload --port 8000   # http://127.0.0.1:8000/health
-uv run pytest                                            # 216 tests
+uv run pytest                                            # tests use a database: use a dedicated test DB
 ```
 
 ```bash
@@ -63,7 +65,7 @@ apps/
                 CV Review, Analytics, mobile share-target
   extension/    Browser extension (MV3, esbuild): one-click capture
   mobile/       Mobile capture setup instructions (PWA lives in apps/web; see apps/mobile/README.md)
-agents/         LLM agent prompts (cv_generator/v1.md); job_parser not built (P1)
+agents/         LLM agent prompts (cv_generator/v2.md, selection-only pilot); job_parser not built (P1)
 adapters/       Future ATS automation adapters (P3, not yet implemented)
 domain/         Signpost only — domain logic lives in apps/api (see domain/README.md)
 workers/        Signpost only — background tasks run in-process for now (see workers/README.md)

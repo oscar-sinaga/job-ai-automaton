@@ -87,6 +87,7 @@ class CVVersionOut(BaseModel):
     summary_text: str | None
     sections: dict[str, Any]
     is_submitted: bool
+    is_approved: bool
     created_at: dt.datetime
 
 
@@ -97,3 +98,4 @@ class CVEditRequest(BaseModel):
 class CVExportResponse(BaseModel):
     artifact_id: int
     storage_uri: str
+    download_url: str

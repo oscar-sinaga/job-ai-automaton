@@ -1,6 +1,7 @@
 # OSCAR Job Copilot — Design Pack
 
-Produced before implementation per master spec §30/§40. **Status: awaiting product-owner approval.**
+Produced before implementation per master spec §30/§40. These are living design
+documents; see the current readiness status below and the first-usage guide.
 
 Source specs: [`../OSCAR_Job_Copilot_AI_Agent_Master_Spec_v2.md`](../OSCAR_Job_Copilot_AI_Agent_Master_Spec_v2.md) (engineering) · [`../OSCAR_Job_Copilot_User_Plan_v2.md`](../OSCAR_Job_Copilot_User_Plan_v2.md) (product, Indonesian).
 
@@ -24,7 +25,8 @@ Source specs: [`../OSCAR_Job_Copilot_AI_Agent_Master_Spec_v2.md`](../OSCAR_Job_C
 | 14 | [Deployment Plan](14_DEPLOYMENT_PLAN.md) | Local topology, env vars, **backups**, runbook |
 | 15 | [Roadmap & Milestones](15_ROADMAP_AND_MILESTONES.md) | M0–M6 with exit criteria and decision gates |
 | 16 | [Risk Register](16_RISK_REGISTER.md) | Risks with **detection signals**, plus consciously accepted risks |
-| 17 | [Decision Log](17_DECISION_LOG.md) | 25 ADRs (LLM provider switched to OpenAI, ADR-025) + **4 open decisions** |
+| 17 | [Decision Log](17_DECISION_LOG.md) | 26 ADRs, including the selection-only pilot (ADR-026), + **4 open decisions** |
+| 18 | [First Real Usage](18_FIRST_REAL_USAGE.md) | Current fixes, profile setup, first 3–5 applications, and remaining verification |
 
 ## If you only read three
 
@@ -34,6 +36,9 @@ Source specs: [`../OSCAR_Job_Copilot_AI_Agent_Master_Spec_v2.md`](../OSCAR_Job_C
 
 ## Current state
 
-**Milestone 0 (Foundation) complete.** No feature code exists: no capture endpoint, no CV generation, no tracking, no analytics. See [15](15_ROADMAP_AND_MILESTONES.md) for what M1 adds.
+**2026-11-02:** M0–M5 implementation exists. Review fixes cover CV grounding,
+skills, edits, approval status and PDF export/download. The initial flow has been
+tested with example data and a fake model. Real profile entry, model evaluation,
+phone capture and M6 usage targets still require verification. Start at [18](18_FIRST_REAL_USAGE.md).
 
 Docs are living documents — a changed decision is recorded in [17](17_DECISION_LOG.md) and reflected here *before* the code changes.

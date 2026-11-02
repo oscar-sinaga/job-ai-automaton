@@ -168,6 +168,12 @@ export interface DraftBlock {
 	experience_id?: number;
 	project_id?: number;
 	bullets: DraftBullet[];
+	company?: string;
+	title?: string;
+	start_date?: string;
+	end_date?: string | null;
+	is_current?: boolean;
+	name?: string;
 }
 
 export interface CVSections {
@@ -176,6 +182,8 @@ export interface CVSections {
 	projects: DraftBlock[];
 	skills: string[];
 	missing_requirements: string[];
+	source_facts?: Record<string, string>;
+	candidate?: Record<string, string>;
 }
 
 export interface GroundingRejection {
@@ -204,6 +212,7 @@ export interface CVVersionOut {
 	summary_text: string | null;
 	sections: CVSections;
 	is_submitted: boolean;
+	is_approved: boolean;
 	created_at: string;
 }
 

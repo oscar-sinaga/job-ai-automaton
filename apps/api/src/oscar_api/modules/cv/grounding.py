@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import datetime as dt
 import re
+import unicodedata
 from collections.abc import Callable
 from dataclasses import dataclass
 
@@ -73,8 +74,7 @@ def _numbers_in(text: str) -> set[str]:
     experience's actual span. Without this exclusion, V2 would reject every
     tenure claim before V6 ever ran (it matches "8" as an ungrounded number
     the same way it would match "70%")."""
-    duration_numbers = set(_YEARS_RE.findall(text))
-    return set(_NUMBER_RE.findall(text)) - duration_numbers
+    return set(_NUMBER_RE.findall(_YEARS_RE.sub("", text)))
 
 
 def _cited_facts(bullet: DraftBullet, ctx: GroundingContext) -> list[CareerAchievement]:
@@ -138,7 +138,7 @@ def check_known_technology(
 
     text_lower = bullet.text.lower()
     for term in KNOWN_TECHNOLOGY_TERMS:
-        if term in text_lower and term not in allowed:
+        if re.search(rf"(?<!\w){re.escape(term)}(?!\w)", text_lower) and term not in allowed:
             return "UNKNOWN_TECHNOLOGY"
     return None
 
@@ -180,6 +180,24 @@ def check_date_consistency(bullet: DraftBullet, cited: list[CareerAchievement]) 
     return None
 
 
+def check_statement_match(bullet: DraftBullet, cited: list[CareerAchievement]) -> str | None:
+    """Pilot mode permits selection, not free paraphrasing (ADR-026).
+
+    A valid citation alone says nothing about the claim's meaning. Match an
+    entire stored statement; substring/keyword overlap would accept an invented
+    sentence appended to a real one. Only case, whitespace and final full stops
+    are normalized. Real profile facts still require the owner's review.
+    """
+
+    def normalize(text: str) -> str:
+        return " ".join(unicodedata.normalize("NFKC", text).casefold().split()).rstrip(".")
+
+    claim = normalize(bullet.text)
+    if not claim or not any(claim == normalize(fact.statement) for fact in cited):
+        return "UNSUPPORTED_CLAIM"
+    return None
+
+
 _Rule = Callable[[DraftBullet, list[CareerAchievement], GroundingContext], "str | None"]
 
 _RULES: list[_Rule] = [
@@ -189,6 +207,7 @@ _RULES: list[_Rule] = [
     lambda b, cited, ctx: check_known_technology(b, cited, ctx),
     lambda b, cited, ctx: check_known_employer(b, cited, ctx),
     lambda b, cited, ctx: check_date_consistency(b, cited),
+    lambda b, cited, ctx: check_statement_match(b, cited),
 ]
 
 
@@ -208,33 +227,63 @@ def verify_draft(draft: CVDraft, ctx: GroundingContext) -> tuple[CVDraft, Ground
     checked = 0
     rejections: list[GroundingRejection] = []
 
-    def _keep(bullet: DraftBullet) -> bool:
+    def _keep(bullet: DraftBullet, *, parent: tuple[str, int] | None = None) -> bool:
         nonlocal checked
         checked += 1
         reason = verify_bullet(bullet, ctx)
+        if reason is None and parent is not None:
+            kind, parent_id = parent
+            for fact in _cited_facts(bullet, ctx):
+                related = getattr(fact, kind)
+                actual_id = related.id if related is not None else getattr(fact, f"{kind}_id")
+                if actual_id != parent_id:
+                    reason = "FACT_PARENT_MISMATCH"
+                    break
         if reason is not None:
             rejections.append(GroundingRejection(text=bullet.text, reason=reason))
             return False
         return True
 
     summary = (
-        draft.summary if _keep(draft.summary) else DraftBullet(text="", supporting_fact_ids=[])
+        draft.summary
+        if draft.summary.text.strip() and _keep(draft.summary)
+        else DraftBullet(text="", supporting_fact_ids=[])
     )
 
     cleaned_experience: list[DraftExperienceBlock] = []
     for exp_block in draft.experience:
-        kept_bullets = [b for b in exp_block.bullets if _keep(b)]
+        kept_bullets = [
+            b for b in exp_block.bullets if _keep(b, parent=("experience", exp_block.experience_id))
+        ]
         if kept_bullets:
             cleaned_experience.append(exp_block.model_copy(update={"bullets": kept_bullets}))
 
     cleaned_projects: list[DraftProjectBlock] = []
     for proj_block in draft.projects:
-        kept_bullets = [b for b in proj_block.bullets if _keep(b)]
+        kept_bullets = [
+            b for b in proj_block.bullets if _keep(b, parent=("project", proj_block.project_id))
+        ]
         if kept_bullets:
             cleaned_projects.append(proj_block.model_copy(update={"bullets": kept_bullets}))
 
+    allowed_skills = set(ctx.profile_skill_names)
+    for fact in ctx.retrieved_facts.values():
+        allowed_skills.update(t.lower() for t in (*fact.skill_tags, *fact.technology_tags))
+    skills: list[str] = []
+    for skill in draft.skills:
+        checked += 1
+        if skill.strip().lower() not in allowed_skills:
+            rejections.append(GroundingRejection(text=skill, reason="UNSUPPORTED_SKILL"))
+        elif skill.strip().lower() not in {s.lower() for s in skills}:
+            skills.append(skill.strip())
+
     cleaned = draft.model_copy(
-        update={"summary": summary, "experience": cleaned_experience, "projects": cleaned_projects}
+        update={
+            "summary": summary,
+            "experience": cleaned_experience,
+            "projects": cleaned_projects,
+            "skills": skills,
+        }
     )
     report = GroundingReport(
         claims_checked=checked, claims_rejected=len(rejections), rejections=rejections

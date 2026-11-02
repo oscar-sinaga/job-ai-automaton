@@ -145,12 +145,21 @@ POST /api/v1/jobs/{id}/generate-cv
 GET   /api/v1/jobs/{id}/cv-versions      → list (id, version_number, is_submitted, created_at)
 GET   /api/v1/cv/{id}                    → full version incl. per-bullet supporting_fact_ids
 PATCH /api/v1/cv/{id}                    → { "sections": {...} } → creates a NEW version, writes CV_EDITED
-POST  /api/v1/cv/{id}/approve            → writes CV_APPROVED, job → READY_TO_APPLY
+POST  /api/v1/cv/{id}/approve            → writes CV_APPROVED for this version; SAVED → READY_TO_APPLY; other statuses preserved
 POST  /api/v1/cv/{id}/export             → 201 { "artifact_id": 12, "storage_uri": "...", "download_url": "..." }
+GET   /api/v1/cv/{id}/artifacts/{artifact_id}/download → authenticated application/pdf attachment
 POST  /api/v1/cv/{id}/mark-submitted     → unsets any prior submitted version for the job (one txn), 409 on conflict
 ```
 
 `PATCH /cv/{id}` creating a new version rather than mutating is the mechanism behind US-4: a CV that was submitted must remain byte-stable forever.
+
+Pilot policy (ADR-026): edits validate the CV schema, statements, parents and
+skills, then rebuild source/contact/headings from Career Profile. Full-version
+responses include `is_approved`. A new version requires its own review. Export
+returns 409 before approval, 422 for missing candidate name/email or unsupported
+current facts, and 503 for render/storage failure. Repeat exports reuse an
+existing saved artifact. `download_url` is an API-relative path requiring
+`X-API-Key`; the web app serves it through its server-only download route.
 
 ---
 

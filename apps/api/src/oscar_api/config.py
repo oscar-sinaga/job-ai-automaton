@@ -7,11 +7,13 @@ insecure.
 
 from __future__ import annotations
 
+import json
 from functools import lru_cache
 from pathlib import Path
+from typing import Annotated
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 # repo root: .../job-ai-automaton (this file is apps/api/src/oscar_api/config.py)
 REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -35,7 +37,9 @@ class Settings(BaseSettings):
     # from M1, request auth depends on it and an empty value rejects every write.
     api_key: str = ""
 
-    cors_origins: list[str] = Field(default_factory=lambda: ["http://127.0.0.1:5173"])
+    cors_origins: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["http://127.0.0.1:5173"]
+    )
 
     storage_dir: Path = REPO_ROOT / "var" / "storage"
     log_dir: Path = REPO_ROOT / "var" / "logs"
@@ -56,6 +60,8 @@ class Settings(BaseSettings):
     def _split_origins(cls, v: object) -> object:
         """Accept a comma-separated string so .env stays simple."""
         if isinstance(v, str):
+            if v.lstrip().startswith("["):
+                return json.loads(v)
             return [origin.strip() for origin in v.split(",") if origin.strip()]
         return v
 

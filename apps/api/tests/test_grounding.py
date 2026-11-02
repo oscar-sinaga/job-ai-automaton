@@ -72,7 +72,9 @@ def _achievement(
 
 def test_bullet_passes_when_it_cites_a_retrieved_fact():
     exp = _experience(7)
-    fact = _achievement(41, experience=exp, skill_tags=["python"])
+    fact = _achievement(
+        41, statement="Built things in Python.", experience=exp, skill_tags=["python"]
+    )
     profile = _profile_with(experiences=[exp], achievements=[fact])
     ctx = GroundingContext.build(profile, [fact])
 
@@ -98,7 +100,12 @@ def test_v1_rejects_fact_id_not_in_retrieved_set():
 
 
 def test_v2_rejects_invented_number():
-    fact = _achievement(1, metric_value="reduced latency from 320ms to 90ms", metric_verified=True)
+    fact = _achievement(
+        1,
+        statement="Reduced latency from 320ms to 90ms.",
+        metric_value="reduced latency from 320ms to 90ms",
+        metric_verified=True,
+    )
     ctx = GroundingContext.build(_profile_with(achievements=[fact]), [fact])
     bullet = DraftBullet(text="Reduced latency by 70%.", supporting_fact_ids=[fact_id_of(fact)])
 
@@ -106,7 +113,12 @@ def test_v2_rejects_invented_number():
 
 
 def test_v2_accepts_number_that_appears_in_the_cited_metric():
-    fact = _achievement(1, metric_value="reduced latency from 320ms to 90ms", metric_verified=True)
+    fact = _achievement(
+        1,
+        statement="Reduced latency from 320ms to 90ms.",
+        metric_value="reduced latency from 320ms to 90ms",
+        metric_verified=True,
+    )
     ctx = GroundingContext.build(_profile_with(achievements=[fact]), [fact])
     bullet = DraftBullet(
         text="Reduced latency from 320ms to 90ms.", supporting_fact_ids=[fact_id_of(fact)]
@@ -134,7 +146,11 @@ def test_v4_rejects_technology_not_in_cited_tags_or_skills():
 
 
 def test_v4_accepts_technology_present_in_cited_tags():
-    fact = _achievement(1, technology_tags=["kubernetes", "docker"])
+    fact = _achievement(
+        1,
+        statement="Deployed services using Kubernetes and Docker.",
+        technology_tags=["kubernetes", "docker"],
+    )
     ctx = GroundingContext.build(_profile_with(achievements=[fact]), [fact])
     bullet = DraftBullet(
         text="Deployed services using Kubernetes and Docker.",
@@ -146,7 +162,7 @@ def test_v4_accepts_technology_present_in_cited_tags():
 
 def test_v4_accepts_technology_present_in_profile_skill_list():
     skill = CareerSkill(id=1, name="aws")
-    fact = _achievement(1)
+    fact = _achievement(1, statement="Operated infrastructure on AWS.")
     ctx = GroundingContext.build(_profile_with(achievements=[fact], skills=[skill]), [fact])
     bullet = DraftBullet(
         text="Operated infrastructure on AWS.", supporting_fact_ids=[fact_id_of(fact)]
@@ -171,7 +187,7 @@ def test_v5_rejects_a_different_known_employer():
 
 def test_v5_accepts_the_cited_experiences_own_company():
     exp = _experience(1, company="Acme Corp")
-    fact = _achievement(1, experience=exp)
+    fact = _achievement(1, statement="Led the platform team at Acme Corp.", experience=exp)
     ctx = GroundingContext.build(_profile_with(experiences=[exp], achievements=[fact]), [fact])
     bullet = DraftBullet(
         text="Led the platform team at Acme Corp.", supporting_fact_ids=[fact_id_of(fact)]
@@ -193,7 +209,7 @@ def test_v6_rejects_duration_beyond_the_cited_experiences_span():
 
 def test_v6_accepts_duration_within_the_cited_experiences_span():
     exp = _experience(1, years_ago=3, is_current=True)
-    fact = _achievement(1, experience=exp)
+    fact = _achievement(1, statement="3 years of experience leading this team.", experience=exp)
     ctx = GroundingContext.build(_profile_with(experiences=[exp], achievements=[fact]), [fact])
     bullet = DraftBullet(
         text="3 years of experience leading this team.", supporting_fact_ids=[fact_id_of(fact)]
@@ -203,12 +219,15 @@ def test_v6_accepts_duration_within_the_cited_experiences_span():
 
 
 def test_verify_draft_drops_only_the_failing_bullet_and_reports_it():
-    good_fact = _achievement(1, skill_tags=["python"])
-    profile = _profile_with(achievements=[good_fact])
+    exp = _experience(1)
+    good_fact = _achievement(
+        1, statement="Built things in Python.", experience=exp, skill_tags=["python"]
+    )
+    profile = _profile_with(experiences=[exp], achievements=[good_fact])
     ctx = GroundingContext.build(profile, [good_fact])
 
     draft = CVDraft(
-        summary=DraftBullet(text="MLOps engineer.", supporting_fact_ids=[fact_id_of(good_fact)]),
+        summary=DraftBullet(text=good_fact.statement, supporting_fact_ids=[fact_id_of(good_fact)]),
         experience=[
             DraftExperienceBlock(
                 experience_id=1,

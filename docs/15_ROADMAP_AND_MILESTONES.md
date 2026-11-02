@@ -2,6 +2,24 @@
 
 Method: **vertical slices** (master spec §38). Each milestone ends with something usable on real jobs, never with "the database layer is done". Estimates assume solo part-time work.
 
+## Readiness update — 2026-11-02
+
+The historical build checkmarks below describe implementation, not proof of real
+usage. The latest review reproduced unsupported claims/skills, approval rewinding
+an application, PDF rendering failures, and a missing download flow. These are now
+covered by regressions and repaired for the first pilot (ADR-026).
+
+CV generation temporarily selects complete stored achievement statements instead
+of freely paraphrasing them. Manual edits are checked too. CVs snapshot source text,
+contact information and experience headings; export requires per-version approval.
+PDF download is authenticated and repeat exports reuse the original saved bytes.
+
+The first checkpoint is **5–10 saved jobs and 3–5 real applications**, following
+[18_FIRST_REAL_USAGE](18_FIRST_REAL_USAGE.md). This is an intermediate checkpoint;
+it does not replace V1's 50 jobs / 25 applications, mobile capture, analytics, or
+quality/time targets. No real-model evaluation or real application was performed
+as part of the repair session.
+
 ```text
 M0 Foundation ──► M1 Capture ──► M2 Career Profile ──► M3 CV ──► M4 Tracking ──► M5 Analytics ──► M6 Stabilization ──► V1
    (done)          (done)         (build done)       (build done) (build done)   (build done)      ~4 wks real usage

@@ -168,10 +168,16 @@ export const actions: Actions = {
 
 	updateApplicationProfile: async ({ request }) => {
 		const form = await request.formData();
+		const current = await apiFetch<CareerProfile>('/career-profile');
+		const links = { ...current.application_profile.links };
+		for (const key of ['name', 'email', 'phone', 'linkedin', 'github', 'portfolio']) {
+			links[`cv_${key}`] = str(form, `cv_${key}`) ?? '';
+		}
 		return run(() =>
 			apiFetch('/career-profile/application-profile', {
 				method: 'PATCH',
 				body: JSON.stringify({
+					links,
 					notice_period: str(form, 'notice_period'),
 					salary_expectation: str(form, 'salary_expectation'),
 					work_authorization: str(form, 'work_authorization'),

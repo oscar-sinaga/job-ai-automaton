@@ -17,8 +17,8 @@
 		{/if}
 	</div>
 	<p class="mt-1 text-xs text-slate-500">
-		Every bullet below is traceable to a career fact. Removing a bullet creates a new version — this
-		one stays exactly as generated.
+		Check this CV against the career facts below before approving it. Removing a bullet saves a new
+		version; the original stays available.
 	</p>
 
 	{#if form?.error}
@@ -27,6 +27,18 @@
 	{#if form?.success}
 		<p class="mt-3 rounded bg-emerald-50 px-3 py-2 text-sm text-emerald-700">Done.</p>
 	{/if}
+	{#if form && 'downloadUrl' in form && form.downloadUrl}
+		<a href={form.downloadUrl} download class="mt-3 inline-block rounded bg-emerald-700 px-4 py-2 text-sm text-white">Download PDF</a>
+	{/if}
+
+	<section class="mt-6 rounded border border-slate-200 bg-white p-4">
+		<h2 class="text-sm font-semibold text-slate-900">CV contact details</h2>
+		<p class="mt-2 text-sm">{data.cv.sections.candidate?.name ?? 'Name not set'} · {data.cv.sections.candidate?.email ?? 'Email not set'}</p>
+		<p class="mt-2 text-xs text-slate-500">Edit contact details in <a href="/career-profile" class="underline">Career Profile</a>, then update this CV to save a new version.</p>
+		<form method="post" action="?/refreshProfile" use:enhance class="mt-2">
+			<button class="text-xs underline" type="submit">Update CV from profile</button>
+		</form>
+	</section>
 
 	<!-- Summary -->
 	<section class="mt-6 rounded border border-slate-200 bg-white p-4">
@@ -56,6 +68,8 @@
 		<section class="mt-6 rounded border border-slate-200 bg-white p-4">
 			<h2 class="text-sm font-semibold text-slate-900">Experience</h2>
 			{#each data.cv.sections.experience as block, blockIndex (blockIndex)}
+				<p class="mt-3 text-sm font-medium">{block.title ?? 'Experience'}{block.company ? ` | ${block.company}` : ''}</p>
+				{#if block.start_date}<p class="text-xs text-slate-500">{block.start_date} – {block.is_current ? 'Present' : (block.end_date ?? '')}</p>{/if}
 				<ul class="mt-2 space-y-2">
 					{#each block.bullets as bullet, bulletIndex (bulletIndex)}
 						<li class="flex items-start justify-between gap-2 text-sm">
@@ -87,6 +101,7 @@
 		<section class="mt-6 rounded border border-slate-200 bg-white p-4">
 			<h2 class="text-sm font-semibold text-slate-900">Projects</h2>
 			{#each data.cv.sections.projects as block, blockIndex (blockIndex)}
+				<p class="mt-3 text-sm font-medium">{block.name ?? 'Project'}</p>
 				<ul class="mt-2 space-y-2">
 					{#each block.bullets as bullet, bulletIndex (bulletIndex)}
 						<li class="flex items-start justify-between gap-2 text-sm">
@@ -126,15 +141,27 @@
 		</section>
 	{/if}
 
+	<section class="mt-6 rounded border border-slate-200 bg-white p-4">
+		<h2 class="text-sm font-semibold text-slate-900">Career facts used in this version</h2>
+		{#each Object.entries(data.cv.sections.source_facts ?? {}) as [factId, statement] (factId)}
+			<div class="mt-3 text-sm"><span class="font-mono text-xs text-slate-500">{factId}</span><p>{statement}</p></div>
+		{:else}
+			<p class="mt-2 text-sm text-amber-800">This older version has no saved source text. Update the CV from your profile and check the sources before exporting.</p>
+		{/each}
+	</section>
+
 	<!-- Actions -->
 	<section class="mt-6 flex flex-wrap gap-2 rounded border border-slate-200 bg-white p-4">
-		<form method="post" action="?/approve" use:enhance>
-			<button type="submit" class="rounded bg-slate-900 px-4 py-1.5 text-sm text-white hover:bg-slate-800"
-				>Approve (job → Ready to Apply)</button
-			>
-		</form>
+		{#if !data.cv.is_approved}
+			<form method="post" action="?/approve" use:enhance class="w-full space-y-3">
+				<label class="flex items-start gap-2 text-sm"><input type="checkbox" name="reviewed" required class="mt-1" /> I reviewed the CV, skills and source facts, and confirm they accurately describe my experience.</label>
+				<button type="submit" class="rounded bg-slate-900 px-4 py-1.5 text-sm text-white hover:bg-slate-800">Approve CV</button>
+			</form>
+		{:else}
+			<p class="w-full text-sm text-emerald-800">This version has been reviewed and approved.</p>
+		{/if}
 		<form method="post" action="?/export" use:enhance>
-			<button type="submit" class="rounded border border-slate-300 px-4 py-1.5 text-sm hover:bg-slate-50"
+			<button disabled={!data.cv.is_approved} type="submit" class="rounded border border-slate-300 px-4 py-1.5 text-sm hover:bg-slate-50 disabled:opacity-50"
 				>Export PDF</button
 			>
 		</form>

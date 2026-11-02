@@ -8,6 +8,7 @@ operates on one already-generated version).
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from oscar_api.core.auth import require_api_key
@@ -31,7 +32,7 @@ jobs_router = APIRouter(prefix="/jobs", tags=["cv"], dependencies=[Depends(requi
 cv_router = APIRouter(prefix="/cv", tags=["cv"], dependencies=[Depends(require_api_key)])
 
 
-def _to_out(version: CVVersion) -> CVVersionOut:
+def _to_out(version: CVVersion, session: Session) -> CVVersionOut:
     return CVVersionOut(
         id=version.id,
         job_id=version.job_id,
@@ -40,6 +41,7 @@ def _to_out(version: CVVersion) -> CVVersionOut:
         summary_text=version.summary_text,
         sections=version.sections,
         is_submitted=version.is_submitted,
+        is_approved=service.is_approved(session, version),
         created_at=version.created_at,
     )
 
@@ -87,19 +89,19 @@ def list_cv_versions(
 
 @cv_router.get("/{cv_id}", response_model=CVVersionOut)
 def get_cv(cv_id: int, session: Session = Depends(get_session)) -> CVVersionOut:
-    return _to_out(service.get_version_or_404(session, cv_id))
+    return _to_out(service.get_version_or_404(session, cv_id), session)
 
 
 @cv_router.patch("/{cv_id}", response_model=CVVersionOut)
 def edit_cv(
     cv_id: int, request: CVEditRequest, session: Session = Depends(get_session)
 ) -> CVVersionOut:
-    return _to_out(service.edit_version(session, cv_id, request.sections))
+    return _to_out(service.edit_version(session, cv_id, request.sections), session)
 
 
 @cv_router.post("/{cv_id}/approve", response_model=CVVersionOut)
 def approve_cv(cv_id: int, session: Session = Depends(get_session)) -> CVVersionOut:
-    return _to_out(service.approve_version(session, cv_id))
+    return _to_out(service.approve_version(session, cv_id), session)
 
 
 @cv_router.post("/{cv_id}/export", response_model=CVExportResponse, status_code=201)
@@ -107,9 +109,32 @@ def export_cv(
     cv_id: int, session: Session = Depends(get_session), storage: Storage = Depends(get_storage)
 ) -> CVExportResponse:
     artifact = service.export_version(session, storage, cv_id)
-    return CVExportResponse(artifact_id=artifact.id, storage_uri=artifact.storage_uri)
+    return CVExportResponse(
+        artifact_id=artifact.id,
+        storage_uri=artifact.storage_uri,
+        download_url=f"/api/v1/cv/{cv_id}/artifacts/{artifact.id}/download",
+    )
 
 
 @cv_router.post("/{cv_id}/mark-submitted", response_model=CVVersionOut)
 def mark_submitted(cv_id: int, session: Session = Depends(get_session)) -> CVVersionOut:
-    return _to_out(service.mark_submitted(session, cv_id))
+    return _to_out(service.mark_submitted(session, cv_id), session)
+
+
+@cv_router.get("/{cv_id}/artifacts/{artifact_id}/download", response_class=Response)
+def download_cv(
+    cv_id: int,
+    artifact_id: int,
+    session: Session = Depends(get_session),
+    storage: Storage = Depends(get_storage),
+) -> Response:
+    data, filename = service.download_artifact(session, storage, cv_id, artifact_id)
+    return Response(
+        content=data,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Cache-Control": "private, no-store",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )

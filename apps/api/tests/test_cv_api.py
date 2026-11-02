@@ -17,8 +17,8 @@ from oscar_api.modules.cv.deps import get_llm_provider
 LONG_JD = "We are hiring a Senior ML Engineer with strong Python experience. " * 5
 
 
-async def _setup_job_and_profile(client: httpx.AsyncClient) -> tuple[int, int]:
-    """Returns (job_id, achievement_id)."""
+async def _setup_job_and_profile(client: httpx.AsyncClient) -> tuple[int, int, int]:
+    """Returns (job_id, achievement_id, experience_id)."""
     capture = await client.post(
         "/api/v1/jobs/capture",
         json={
@@ -50,18 +50,23 @@ async def _setup_job_and_profile(client: httpx.AsyncClient) -> tuple[int, int]:
             "skill_tags": ["python"],
         },
     )
-    return job_id, achievement.json()["id"]
+    contact = await client.patch(
+        "/api/v1/career-profile/application-profile",
+        json={"links": {"cv_name": "Sample Candidate", "cv_email": "sample@example.com"}},
+    )
+    assert contact.status_code == 200
+    return job_id, achievement.json()["id"], exp_id
 
 
-def _good_draft(fact_id: str) -> dict:
+def _good_draft(fact_id: str, experience_id: int) -> dict:
     return {
         "summary": {
-            "text": "MLOps engineer with production Python experience.",
+            "text": "Built production ML pipelines using Python.",
             "supporting_fact_ids": [fact_id],
         },
         "experience": [
             {
-                "experience_id": 1,
+                "experience_id": experience_id,
                 "bullets": [
                     {
                         "text": "Built production ML pipelines using Python.",
@@ -79,8 +84,8 @@ def _good_draft(fact_id: str) -> dict:
 async def test_generate_cv_succeeds_with_grounded_draft(
     client: httpx.AsyncClient, fake_llm
 ) -> None:
-    job_id, achievement_id = await _setup_job_and_profile(client)
-    fake_llm.queue(_good_draft(f"ach_{achievement_id}"))
+    job_id, achievement_id, experience_id = await _setup_job_and_profile(client)
+    fake_llm.queue(_good_draft(f"ach_{achievement_id}", experience_id))
 
     response = await client.post(f"/api/v1/jobs/{job_id}/generate-cv", json={})
 
@@ -95,8 +100,8 @@ async def test_generate_cv_succeeds_with_grounded_draft(
 async def test_generate_cv_drops_fabricated_bullet_but_keeps_grounded_content(
     client: httpx.AsyncClient, fake_llm
 ) -> None:
-    job_id, achievement_id = await _setup_job_and_profile(client)
-    draft = _good_draft(f"ach_{achievement_id}")
+    job_id, achievement_id, experience_id = await _setup_job_and_profile(client)
+    draft = _good_draft(f"ach_{achievement_id}", experience_id)
     draft["experience"][0]["bullets"].append(
         {"text": "Led a team of 12 engineers.", "supporting_fact_ids": []}
     )
@@ -116,7 +121,7 @@ async def test_generate_cv_drops_fabricated_bullet_but_keeps_grounded_content(
 async def test_generate_cv_all_rejected_persists_no_version(
     client: httpx.AsyncClient, fake_llm
 ) -> None:
-    job_id, _ = await _setup_job_and_profile(client)
+    job_id, _, _ = await _setup_job_and_profile(client)
     fake_llm.queue(
         {
             "summary": {"text": "Fabricated claim.", "supporting_fact_ids": []},
@@ -157,7 +162,7 @@ async def test_generate_cv_without_raw_jd_text_is_validation_error(
 async def test_generate_cv_when_provider_times_out_is_llm_unavailable(
     client: httpx.AsyncClient,
 ) -> None:
-    job_id, _ = await _setup_job_and_profile(client)
+    job_id, _, _ = await _setup_job_and_profile(client)
     app.dependency_overrides[get_llm_provider] = lambda: FailingLLMProvider()
     try:
         response = await client.post(f"/api/v1/jobs/{job_id}/generate-cv", json={})
@@ -174,28 +179,30 @@ async def test_generate_cv_when_provider_times_out_is_llm_unavailable(
 async def test_edit_creates_new_version_and_keeps_the_original(
     client: httpx.AsyncClient, fake_llm
 ) -> None:
-    job_id, achievement_id = await _setup_job_and_profile(client)
-    fake_llm.queue(_good_draft(f"ach_{achievement_id}"))
+    job_id, achievement_id, experience_id = await _setup_job_and_profile(client)
+    fake_llm.queue(_good_draft(f"ach_{achievement_id}", experience_id))
     generated = await client.post(f"/api/v1/jobs/{job_id}/generate-cv", json={})
     cv_id = generated.json()["cv_version_id"]
     original_sections = generated.json()["sections"]
 
     edited = await client.patch(
         f"/api/v1/cv/{cv_id}",
-        json={"sections": {**original_sections, "skills": ["Python", "FastAPI"]}},
+        json={
+            "sections": {**original_sections, "summary": {"text": "", "supporting_fact_ids": []}}
+        },
     )
 
     assert edited.status_code == 200
     assert edited.json()["version_number"] == 2
-    assert edited.json()["sections"]["skills"] == ["Python", "FastAPI"]
+    assert edited.json()["sections"]["summary"]["text"] == ""
 
     original = await client.get(f"/api/v1/cv/{cv_id}")
     assert original.json()["sections"]["skills"] == ["Python"]  # untouched
 
 
 async def test_approve_sets_job_ready_to_apply(client: httpx.AsyncClient, fake_llm) -> None:
-    job_id, achievement_id = await _setup_job_and_profile(client)
-    fake_llm.queue(_good_draft(f"ach_{achievement_id}"))
+    job_id, achievement_id, experience_id = await _setup_job_and_profile(client)
+    fake_llm.queue(_good_draft(f"ach_{achievement_id}", experience_id))
     generated = await client.post(f"/api/v1/jobs/{job_id}/generate-cv", json={})
     cv_id = generated.json()["cv_version_id"]
 
@@ -211,11 +218,12 @@ async def test_approve_sets_job_ready_to_apply(client: httpx.AsyncClient, fake_l
 async def test_export_creates_a_pdf_artifact(
     client: httpx.AsyncClient, fake_llm, fake_storage
 ) -> None:
-    job_id, achievement_id = await _setup_job_and_profile(client)
-    fake_llm.queue(_good_draft(f"ach_{achievement_id}"))
+    job_id, achievement_id, experience_id = await _setup_job_and_profile(client)
+    fake_llm.queue(_good_draft(f"ach_{achievement_id}", experience_id))
     generated = await client.post(f"/api/v1/jobs/{job_id}/generate-cv", json={})
     cv_id = generated.json()["cv_version_id"]
 
+    await client.post(f"/api/v1/cv/{cv_id}/approve")
     exported = await client.post(f"/api/v1/cv/{cv_id}/export")
 
     assert exported.status_code == 201
@@ -225,12 +233,12 @@ async def test_export_creates_a_pdf_artifact(
 
 
 async def test_mark_submitted_is_exclusive_per_job(client: httpx.AsyncClient, fake_llm) -> None:
-    job_id, achievement_id = await _setup_job_and_profile(client)
-    fake_llm.queue(_good_draft(f"ach_{achievement_id}"))
+    job_id, achievement_id, experience_id = await _setup_job_and_profile(client)
+    fake_llm.queue(_good_draft(f"ach_{achievement_id}", experience_id))
     v1 = await client.post(f"/api/v1/jobs/{job_id}/generate-cv", json={})
     cv1_id = v1.json()["cv_version_id"]
 
-    fake_llm.queue(_good_draft(f"ach_{achievement_id}"))
+    fake_llm.queue(_good_draft(f"ach_{achievement_id}", experience_id))
     v2 = await client.post(f"/api/v1/jobs/{job_id}/generate-cv", json={})
     cv2_id = v2.json()["cv_version_id"]
 

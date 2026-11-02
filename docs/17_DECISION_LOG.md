@@ -186,6 +186,39 @@ Architecture decisions and their consequences. Format: context → decision → 
 **What changed in the adapter's internals vs. the Anthropic version:** prompt caching is automatic (no explicit `cache_control` breakpoint — the port's `ContentBlock.cache_control` field is now a documented no-op, kept only in case a future adapter needs it); refusal detection checks `response.status == "incomplete"` + `incomplete_details.reason == "content_filter"` **and** per-item `refusal` content blocks, instead of a single top-level `stop_reason`; the port's `effort` parameter is accepted but unused by this adapter (`gpt-4.1` has no reasoning-effort concept) rather than being mapped to something that would silently change behaviour.
 **Consequence:** Every test still passes unchanged (`FakeLLMProvider` never touches either SDK). The eval harness (ADR-024) and `docs/06_AI_LLM_DESIGN.md`'s cost model were updated for the new provider/pricing; the projected V1 stabilization-run cost drops from ≈$8 to ≈$2.66, reinforcing that cost was never the deciding factor for either provider at this scale. `docs/15_ROADMAP_AND_MILESTONES.md` M3 status note about "never run against a real model" still applies — this environment has no `OPENAI_API_KEY` either.
 
+### ADR-026 — Selection-only CV pilot, reviewed versions and downloadable PDFs
+*2026-11-02 · Implemented for the first real-usage pilot*
+
+**Context:** Review reproduced an invented claim citing an unrelated valid fact,
+unsupported skills passing untouched, and manual edits bypassing verification.
+The six deterministic rules did not establish semantic support. Approval could
+also rewind an applied job, and ordinary multi-bullet/Unicode PDFs failed.
+
+**Decision:** Prompt `cv_generator/v2` selects/reorders complete achievement
+statements. A seventh rule requires whole-statement equality after case,
+whitespace, Unicode normalization and final-full-stop normalization. Each bullet
+must belong to its stated experience/project; skills must be in the profile or
+retrieved tags. Generation drops and reports unsupported content; edits reject
+it with 422. Rewording a career fact happens in Career Profile before generating
+or updating a CV. Free paraphrasing is deferred until semantic checks are evaluated.
+
+Versions snapshot source statements, experience/project headings and CV contact
+details. The UI exposes sources and asks for explicit review; approval is scoped
+to the version and only promotes SAVED to READY_TO_APPLY. Other statuses are
+preserved. Export requires approval, candidate name and email, and uses bundled
+DejaVu fonts. An authenticated artifact route serves the saved PDF; repeated
+exports reuse the same artifact and bytes. Profile changes never rewrite a version.
+
+**Consequence:** This reduces tailoring to selection and ordering for the pilot.
+Stored facts still need the owner's confirmation; this is not an independent
+truth check. Before a first export, validation uses current active facts, so a
+changed/deleted fact can require a new version. Previously saved PDFs remain
+downloadable and reusable. Existing CVs without contact/source snapshots should
+be updated from Career Profile into a new version and reviewed again. No schema
+migration or real provider call is needed for these repairs.
+
+## 2. Open Decisions
+
 ### OPEN-3 — Durable job queue
 Deferred by ADR-004. Revisit if CV generation p95 exceeds 60 s or lost-on-restart tasks become a real annoyance during M6.
 

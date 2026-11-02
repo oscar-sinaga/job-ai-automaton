@@ -16,7 +16,7 @@ export class ApiError extends Error {
 	}
 }
 
-export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+export async function apiRequest(path: string, init: RequestInit = {}): Promise<Response> {
 	const response = await fetch(`${BASE_URL}${path}`, {
 		...init,
 		headers: {
@@ -34,6 +34,11 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
 			body.message ?? response.statusText
 		);
 	}
-	if (response.status === 204) return undefined as T;
+    return response;
+}
+
+export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+    const response = await apiRequest(path, init);
+    if (response.status === 204) return undefined as T;
 	return (await response.json()) as T;
 }
