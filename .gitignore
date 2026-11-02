@@ -16,6 +16,8 @@ node_modules/
 apps/web/.svelte-kit/
 apps/web/build/
 apps/extension/dist/
+apps/web/test-results/
+apps/web/playwright-report/
 
 # App data (never commit generated CVs, logs, or backups)
 var/storage/

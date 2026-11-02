@@ -72,14 +72,17 @@ tetap mengikuti data pemakaian setelah V1, sesuai User Plan §17.
 
 ## Batas verifikasi saat ini
 
-Pemeriksaan terakhir: **233 test backend lulus**, Ruff lint/format dan mypy lulus,
+Pemeriksaan terakhir: **238 test backend lulus**, Ruff lint/format dan mypy lulus,
 serta Svelte type-check dan build frontend lulus.
 
 Perbaikan diuji dengan database sementara, profil contoh dan fake LLM. Form HTML
 frontend, API, penyimpanan PDF, unduhan dan hubungan versi CV dengan lamaran diuji
 melalui HTTP. PDF unduhan dirender dan diperiksa secara visual, termasuk Unicode.
-Interaksi browser belum berhasil diotomasi di sesi ini. Belum ada evaluasi model
-asli, profil asli yang dilengkapi, pengujian HP, atau lamaran nyata yang dikirim.
+Simulasi browser kini lulus pada desktop dan emulasi viewport HP, termasuk input
+profil, versi CV, approval, download PDF, tracking dan perubahan KPI. Runbook serta
+perbaikan formulir/responsivitas ada di [19_OFFLINE_SIMULATION.md](19_OFFLINE_SIMULATION.md).
+Belum ada evaluasi model asli, profil asli yang dilengkapi, pengujian perangkat HP
+fisik/share target, atau lamaran nyata yang dikirim.
 
 ## Serah-terima untuk sesi berikutnya
 

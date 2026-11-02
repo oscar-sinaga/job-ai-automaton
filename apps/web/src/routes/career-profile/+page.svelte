@@ -23,7 +23,7 @@
 	<!-- Summary -->
 	<section class="rounded border border-slate-200 bg-white p-4">
 		<h2 class="text-sm font-semibold text-slate-900">Summary</h2>
-		<form method="post" action="?/updateSummary" use:enhance class="mt-2 space-y-2">
+		<form method="post" action="?/updateSummary" use:enhance={() => ({ update }) => update({ reset: false })} class="mt-2 space-y-2">
 			<textarea
 				name="summary"
 				rows="3"
@@ -66,7 +66,7 @@
 			method="post"
 			action="?/addExperience"
 			use:enhance
-			class="mt-3 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3"
+			class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 border-t border-slate-100 pt-3"
 		>
 			<input name="company" placeholder="Company" required class="rounded border px-2 py-1 text-sm" />
 			<input name="title" placeholder="Title" required class="rounded border px-2 py-1 text-sm" />
@@ -85,11 +85,11 @@
 			<textarea
 				name="description"
 				placeholder="Description (optional)"
-				class="col-span-2 rounded border px-2 py-1 text-sm"
+				class="sm:col-span-2 rounded border px-2 py-1 text-sm"
 			></textarea>
 			<button
 				type="submit"
-				class="col-span-2 rounded bg-slate-900 px-3 py-1.5 text-sm text-white hover:bg-slate-800"
+				class="sm:col-span-2 rounded bg-slate-900 px-3 py-1.5 text-sm text-white hover:bg-slate-800"
 				>Add experience</button
 			>
 		</form>
@@ -118,18 +118,18 @@
 			method="post"
 			action="?/addProject"
 			use:enhance
-			class="mt-3 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3"
+			class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 border-t border-slate-100 pt-3"
 		>
 			<input name="name" placeholder="Project name" required class="rounded border px-2 py-1 text-sm" />
 			<input name="link" placeholder="Link (optional)" class="rounded border px-2 py-1 text-sm" />
 			<textarea
 				name="description"
 				placeholder="Description"
-				class="col-span-2 rounded border px-2 py-1 text-sm"
+				class="sm:col-span-2 rounded border px-2 py-1 text-sm"
 			></textarea>
 			<button
 				type="submit"
-				class="col-span-2 rounded bg-slate-900 px-3 py-1.5 text-sm text-white hover:bg-slate-800"
+				class="sm:col-span-2 rounded bg-slate-900 px-3 py-1.5 text-sm text-white hover:bg-slate-800"
 				>Add project</button
 			>
 		</form>
@@ -178,13 +178,13 @@
 			method="post"
 			action="?/addAchievement"
 			use:enhance
-			class="mt-3 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3"
+			class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 border-t border-slate-100 pt-3"
 		>
 			<textarea
 				name="statement"
 				placeholder="What did you do? (in your own words)"
 				required
-				class="col-span-2 rounded border px-2 py-1 text-sm"
+				class="sm:col-span-2 rounded border px-2 py-1 text-sm"
 			></textarea>
 			<select name="experience_id" class="rounded border px-2 py-1 text-sm">
 				<option value="">(no linked experience)</option>
@@ -215,11 +215,11 @@
 			<input
 				name="domain_tags"
 				placeholder="domain tags (comma-separated)"
-				class="col-span-2 rounded border px-2 py-1 text-sm"
+				class="sm:col-span-2 rounded border px-2 py-1 text-sm"
 			/>
 			<button
 				type="submit"
-				class="col-span-2 rounded bg-slate-900 px-3 py-1.5 text-sm text-white hover:bg-slate-800"
+				class="sm:col-span-2 rounded bg-slate-900 px-3 py-1.5 text-sm text-white hover:bg-slate-800"
 				>Add achievement</button
 			>
 		</form>
@@ -319,10 +319,10 @@
 		<form
 			method="post"
 			action="?/updateApplicationProfile"
-			use:enhance
-			class="mt-2 grid grid-cols-2 gap-2"
+			use:enhance={() => ({ update }) => update({ reset: false })}
+			class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2"
 		>
-			<p class="col-span-2 text-xs text-slate-500">CV contact details are saved with each new CV version. Name and email are required for PDF export.</p>
+			<p class="sm:col-span-2 text-xs text-slate-500">CV contact details are saved with each new CV version. Name and email are required for PDF export.</p>
 			{#each ['name', 'email', 'phone', 'linkedin', 'github', 'portfolio'] as field (field)}
 				<label class="text-xs text-slate-600">
 					CV {field}
@@ -358,7 +358,7 @@
 				value={data.profile.application_profile.preferred_location ?? ''}
 				class="rounded border px-2 py-1 text-sm"
 			/>
-			<label class="col-span-2 flex items-center gap-1 text-sm text-slate-600">
+			<label class="sm:col-span-2 flex items-center gap-1 text-sm text-slate-600">
 				<!-- An unchecked checkbox submits nothing at all, so a plain
 				     checkbox can set relocation_ok=true but never explicitly
 				     back to false; this hidden marker lets the action tell
@@ -372,9 +372,16 @@
 			</label>
 			<button
 				type="submit"
-				class="col-span-2 rounded bg-slate-900 px-3 py-1.5 text-sm text-white hover:bg-slate-800"
+				class="sm:col-span-2 rounded bg-slate-900 px-3 py-1.5 text-sm text-white hover:bg-slate-800"
 				>Save preferences</button
 			>
 		</form>
 	</section>
 </div>
+
+<style>
+	input, textarea, select {
+		min-width: 0;
+		max-width: 100%;
+	}
+</style>

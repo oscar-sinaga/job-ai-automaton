@@ -27,6 +27,7 @@ Source specs: [`../OSCAR_Job_Copilot_AI_Agent_Master_Spec_v2.md`](../OSCAR_Job_C
 | 16 | [Risk Register](16_RISK_REGISTER.md) | Risks with **detection signals**, plus consciously accepted risks |
 | 17 | [Decision Log](17_DECISION_LOG.md) | 26 ADRs, including the selection-only pilot (ADR-026), + **4 open decisions** |
 | 18 | [First Real Usage](18_FIRST_REAL_USAGE.md) | Current fixes, profile setup, first 3–5 applications, and remaining verification |
+| 19 | [Offline Simulation](19_OFFLINE_SIMULATION.md) | No-API test entry point, desktop/mobile browser checks, results and limitations |
 
 ## If you only read three
 
