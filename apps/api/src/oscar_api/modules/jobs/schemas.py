@@ -20,6 +20,8 @@ class CaptureEnvelope(BaseModel):
     capture_method: CaptureMethod
     source_hint: str | None = None
     page_title: str | None = None
+    job_title: str | None = Field(default=None, max_length=500)
+    company_name: str | None = Field(default=None, max_length=500)
     raw_text: str | None = None
     selected_text: str | None = None
     shared_text: str | None = None

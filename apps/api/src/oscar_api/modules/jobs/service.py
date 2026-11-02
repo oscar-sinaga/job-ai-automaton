@@ -128,14 +128,17 @@ def capture_job(
         .first()
     )
     source = resolve_source(session, envelope.source_hint, envelope.url)
+    company_name = (envelope.company_name or "").strip()
+    company = resolve_company(session, company_name) if _slug(company_name) else None
 
     job = Job(
         ref="",  # assigned below once `id` is known
         user_id=SINGLE_USER_ID,
         source_id=source.id,
+        company_id=company.id if company else None,
         url=envelope.url,
         canonical_url=canonical,
-        title=envelope.page_title,
+        title=(envelope.job_title or "").strip() or envelope.page_title,
         capture_completeness=completeness,
         current_status=JobStatus.SAVED,
         dedupe_key=dedupe_key,
