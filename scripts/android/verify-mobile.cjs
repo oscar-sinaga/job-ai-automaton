@@ -348,15 +348,18 @@ async function main() {
     await page.getByRole('button', { name: 'Share job to OSCAR', exact: true }).tap();
     let chooser = await nativeTree('12-native-shortcut-picker');
     await shot('12-native-shortcut-picker');
-    const nativeLabel = [...chooser.matchAll(/text="([^"]*HTTP[^"\n]*Shortcuts[^"]*)"/g)][0]?.[1] ||
+    const nativeLabel = (chooser.includes('text="Save to OSCAR"') ? 'Save to OSCAR' : null) ||
+      [...chooser.matchAll(/text="([^"]*HTTP[^"\n]*Shortcuts[^"]*)"/g)][0]?.[1] ||
       ['Send to…', 'Send to...'].find(label => chooser.includes(`text="${label}"`));
     assert(nativeLabel, 'HTTP Shortcuts must be present in the actual Android chooser');
     await nativeTap({ text: nativeLabel });
+    chooser = await nativeTree('13-native-shortcut-selected');
     const receiverActivity = adb('shell', 'dumpsys', 'activity', 'activities').split('\n')
       .filter(line => /topResumedActivity|mResumedActivity/.test(line)).join('\n');
     assert(receiverActivity.includes('ch.rmy.android.http_shortcuts'), 'The selected target must be HTTP Shortcuts');
-    chooser = await nativeTree('13-native-shortcut-selected');
-    if (chooser.includes('text="Save to OSCAR"')) await nativeTap({ text: 'Save to OSCAR' });
+    if (!chooser.includes('Saved as ') && chooser.includes('text="Save to OSCAR"')) {
+      await nativeTap({ text: 'Save to OSCAR' });
+    }
     let nativeJob;
     await expect.poll(async () => {
       const jobs = (await api('/api/v1/jobs')).items;
