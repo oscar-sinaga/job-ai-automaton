@@ -207,7 +207,7 @@ async def test_verification_page_saves_only_link_and_can_be_enriched(
     blocked_paste = await client.post(
         f"/api/v1/jobs/{job_id}/snapshots",
         json={
-            "raw_text": "Cloudflare: Performing security verification",
+            "raw_text": "Performing security verification. Performance and Security by Cloudflare.",
             "capture_method": "paste_text",
             "captured_at": dt.datetime.now(dt.UTC).isoformat(),
         },
@@ -248,7 +248,7 @@ async def test_job_mentioning_cloudflare_is_still_captured(client: httpx.AsyncCl
         json=_envelope(
             page_title="Cloudflare Security Engineer",
             job_title="Security Engineer",
-            raw_text="Build Cloudflare integrations, JavaScript applications and SQL pipelines. "
+            raw_text="Build Cloudflare verify you are human widgets, JavaScript applications and SQL pipelines. "
             * 10,
             metadata={"page_access": {"unknown": True}},
         ),

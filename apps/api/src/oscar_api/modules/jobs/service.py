@@ -48,8 +48,8 @@ def _slug(value: str) -> str:
 
 
 def _is_verification_text(title: str | None, text: str | None) -> bool:
-    if re.match(
-        r"^(just a moment|attention required.*cloudflare|security verification)",
+    if re.fullmatch(
+        r"(just a moment[.!…]*|attention required.*cloudflare[.!…]*|security verification[.!…]*)",
         (title or "").strip(),
         re.IGNORECASE,
     ):
@@ -58,6 +58,7 @@ def _is_verification_text(title: str | None, text: str | None) -> bool:
     return (
         len(body) < 4000
         and "cloudflare" in body
+        and ("performance and security by cloudflare" in body or "ray id" in body)
         and any(
             phrase in body
             for phrase in (
