@@ -10,6 +10,7 @@ test('example profile → job → CV versions → approval → PDF → applicati
 	page,
 	request
 }, testInfo) => {
+	const company = `Example Warehouse ${testInfo.project.name} ${Date.now()}`;
 	// Refuse mutations unless the explicit offline server is healthy.
 	const health = await request.get(`${API}/health`);
 	expect(await health.json()).toMatchObject({ env: 'simulation', db: 'ok' });
@@ -46,18 +47,18 @@ test('example profile → job → CV versions → approval → PDF → applicati
 	await saveCareerForm('Save');
 	await saveCareerForm('Save');
 	await expect(page.locator('textarea[name="summary"]')).toHaveValue('Example profile for offline simulation.');
-	await page.getByPlaceholder('Company', { exact: true }).fill(`Example Warehouse ${testInfo.project.name}`);
+	await page.getByPlaceholder('Company', { exact: true }).fill(company);
 	await page.getByPlaceholder('Title', { exact: true }).fill('Data Engineer');
 	await page.getByLabel('Start date', { exact: true }).fill('2022-01-01');
 	await page.getByLabel('Current role').check();
 	await saveCareerForm('Add experience');
 	await expect(page.getByPlaceholder('Company', { exact: true })).toHaveValue('');
-	await expect(page.getByText(`Example Warehouse ${testInfo.project.name}`, { exact: false }).first()).toBeVisible();
+	await expect(page.getByText(company, { exact: false }).first()).toBeVisible();
 	for (const text of [statement, secondStatement]) {
 		const count = await page.getByText(text, { exact: true }).count();
 		await page.getByPlaceholder('What did you do? (in your own words)').fill(text);
 		await page.locator('select[name="experience_id"]').selectOption({
-			label: `Data Engineer @ Example Warehouse ${testInfo.project.name}`
+			label: `Data Engineer @ ${company}`
 		});
 		await page.getByPlaceholder('skill tags (comma-separated)', { exact: true }).fill('Python, SQL');
 		await saveCareerForm('Add achievement');

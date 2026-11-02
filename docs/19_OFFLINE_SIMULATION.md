@@ -97,3 +97,42 @@ Emulasi viewport HP bukan pengujian perangkat fisik, PWA install, OS share targe
 Tailscale, atau browser HP asli. Belum ada profil asli, evaluasi model asli,
 lamaran nyata, atau pencapaian target M6/V1 dari sesi ini. Environment Codex
 bersifat sementara; hasil ini tidak berarti aplikasi telah menjadi layanan hosting.
+
+## Regresi lanjutan di cloud VM (2 November 2026)
+
+Dijalankan ulang dari `f70cd1b` dengan PostgreSQL 16.6 terisolasi dan Chromium
+headless 134. Backend: **240 test lulus**; migrasi upgrade, downgrade satu revisi,
+dan upgrade kembali lulus. Ruff, format, mypy, Svelte check (0 error/warning),
+dan production build lulus. Empat browser test lulus pada desktop dan emulasi
+Pixel 7: dua alur lengkap di atas, ditambah dua regresi capture.
+
+Bug yang direproduksi pada kedua viewport: menekan **Hide** setelah menempelkan
+job description menghapus teks ketika editor dibuka lagi. Editor kini hanya
+disembunyikan, bukan dilepas dari DOM. Test memeriksa teks tetap ada, ikut
+tersimpan meskipun editor ditutup, dan formulir bersih setelah berhasil disimpan.
+Fixture pengalaman memiliki nama unik per run agar pemilihan pengalaman tidak
+ambigu saat database simulasi digunakan kembali.
+
+Untuk merekam browser test yang sebenarnya (bukan demo live di desktop):
+
+```bash
+SIMULATION_VIDEO=1 npm run test:simulation
+```
+
+Video `.webm`, screenshot, dan PDF berada di `apps/web/test-results/`.
+
+Harness extension deterministik tersedia di
+[`scripts/extension/README.md`](../scripts/extension/README.md). Type-check,
+build, dan syntax check lulus, tetapi assertion **installed extension belum
+berjalan** di cloud VM ini: full Chromium ditolak saat membuat Unix-domain IPC
+socket (`process_singleton_posix.cc`, `Operation not permitted`). Headless shell
+yang dipakai tes web tidak membuktikan extension terpasang. Tidak ada klaim
+baru tentang kompatibilitas live JobStreet/Kalibrr, kualitas model, perangkat HP
+fisik, atau lamaran nyata.
+
+Catatan runner terbatas: jika cache home tidak dapat ditulis, gunakan
+`UV_CACHE_DIR` / `npm --cache` / `PLAYWRIGHT_BROWSERS_PATH` pada direktori writable.
+Jika tiap command memakai namespace jaringan terpisah, jalankan database, API,
+dan Playwright di dalam satu proses orchestration yang membersihkan hanya
+proses miliknya. PostgreSQL dapat menggunakan TCP loopback tanpa Unix socket;
+jangan melonggarkan pembatasan keamanan runner untuk menjalankan browser.
