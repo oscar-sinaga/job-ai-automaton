@@ -90,6 +90,7 @@ async function captureActiveTab(): Promise<CaptureOutcome> {
 			capture_method: 'extension',
 			captured_at: new Date().toISOString(),
 			metadata: {
+				page_access: extraction.pageAccess,
 				extractor: extraction.extractor,
 				truncated: extraction.truncated,
 				extension_version: chrome.runtime.getManifest().version

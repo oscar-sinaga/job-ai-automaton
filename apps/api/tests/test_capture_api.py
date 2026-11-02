@@ -181,3 +181,77 @@ async def test_capture_writes_a_job_saved_event(client: httpx.AsyncClient) -> No
 
     event_types = [e["event_type"] for e in detail.json()["events"]]
     assert event_types == ["JOB_SAVED"]
+
+
+async def test_verification_page_saves_only_link_and_can_be_enriched(
+    client: httpx.AsyncClient,
+) -> None:
+    capture = await client.post(
+        "/api/v1/jobs/capture",
+        json=_envelope(
+            page_title="Just a moment...",
+            job_title="Incorrect challenge title",
+            company_name="Cloudflare",
+            raw_text="Performing security verification. Performance and Security by Cloudflare.",
+        ),
+    )
+    assert capture.status_code == 201
+    job_id = capture.json()["job_id"]
+    assert capture.json()["capture_completeness"] == "NEEDS_ENRICHMENT"
+    detail = (await client.get(f"/api/v1/jobs/{job_id}")).json()
+    assert detail["title"] is None
+    assert detail["company"] is None
+    assert detail["snapshots"][0]["page_title"] == "Just a moment..."
+    assert (await client.get(f"/api/v1/jobs/{job_id}/raw")).json()["raw_text"] is None
+
+    blocked_paste = await client.post(
+        f"/api/v1/jobs/{job_id}/snapshots",
+        json={
+            "raw_text": "Cloudflare: Performing security verification",
+            "capture_method": "paste_text",
+            "captured_at": dt.datetime.now(dt.UTC).isoformat(),
+        },
+    )
+    assert blocked_paste.status_code == 422
+    assert len((await client.get(f"/api/v1/jobs/{job_id}")).json()["snapshots"]) == 1
+
+    enriched = await client.post(
+        f"/api/v1/jobs/{job_id}/snapshots",
+        json={
+            "raw_text": LONG_JD,
+            "capture_method": "paste_text",
+            "captured_at": dt.datetime.now(dt.UTC).isoformat(),
+        },
+    )
+    assert enriched.status_code == 201
+    assert enriched.json()["capture_completeness"] == "CAPTURED_COMPLETE"
+    detail = (await client.get(f"/api/v1/jobs/{job_id}")).json()
+    assert len(detail["snapshots"]) == 2
+    assert detail["snapshots"][0]["raw_text_length"] == 0
+    assert (await client.get(f"/api/v1/jobs/{job_id}/raw")).json()["raw_text"] == LONG_JD
+
+
+async def test_login_capture_omits_page_text(client: httpx.AsyncClient) -> None:
+    response = await client.post(
+        "/api/v1/jobs/capture",
+        json=_envelope(metadata={"page_access": "login_required"}, page_title="Sign in"),
+    )
+    assert response.status_code == 201
+    assert response.json()["capture_completeness"] == "NEEDS_ENRICHMENT"
+    job_id = response.json()["job_id"]
+    assert (await client.get(f"/api/v1/jobs/{job_id}/raw")).json()["raw_text"] is None
+
+
+async def test_job_mentioning_cloudflare_is_still_captured(client: httpx.AsyncClient) -> None:
+    response = await client.post(
+        "/api/v1/jobs/capture",
+        json=_envelope(
+            page_title="Cloudflare Security Engineer",
+            job_title="Security Engineer",
+            raw_text="Build Cloudflare integrations, JavaScript applications and SQL pipelines. "
+            * 10,
+            metadata={"page_access": {"unknown": True}},
+        ),
+    )
+    assert response.status_code == 201
+    assert response.json()["capture_completeness"] == "CAPTURED_COMPLETE"

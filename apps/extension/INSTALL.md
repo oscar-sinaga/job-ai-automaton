@@ -1,4 +1,4 @@
-# OSCAR Job Copilot 0.1.2
+# OSCAR Job Copilot 0.1.3
 
 ## Pasang di Chrome atau Edge
 
@@ -24,3 +24,14 @@ API key adalah kunci autentikasi backend OSCAR. Fitur capture memakai DOM halama
 - Jika API tidak dapat dijangkau, popup menampilkan pesan untuk memeriksa backend dan URL. Tombol Save aktif lagi untuk mencoba ulang.
 
 Jika extension diperbarui, ganti isi folder dengan paket terbaru, klik **Reload** di halaman extensions, lalu muat ulang halaman lowongan.
+
+## Saat halaman meminta verifikasi atau login
+
+Extension mengenali pola halaman verifikasi Cloudflare, halaman login, dan access denied yang umum. **Save this job** tetap menyimpan tautan dengan status **NEEDS_ENRICHMENT**, tanpa memakai pesan verifikasi sebagai deskripsi atau judul lowongan.
+
+1. Buka job yang disimpan melalui Job Inbox OSCAR.
+2. Buka halaman lowongan dengan browser biasa. Selesaikan login/verifikasi bila diminta situs.
+3. Salin deskripsi lowongan yang terlihat dan tempel pada kolom pelengkap di detail job OSCAR, lalu klik **Save description**.
+4. Setelah deskripsi tersimpan, tombol **Generate CV** tersedia. Judul dan perusahaan dapat diperbaiki melalui **Correct title / company** pada halaman yang sama.
+
+Jika halaman belum bisa dibuka, simpan URL melalui formulir **Save a job** di web OSCAR dan lengkapi nanti. Web search dapat membantu menemukan URL atau situs karier perusahaan asal. Paket ini tidak menyediakan layanan web search otomatis atau mengubah aturan akses portal. Pola verifikasi/login dapat berubah, sehingga deteksi bersifat konservatif.

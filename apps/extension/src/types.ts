@@ -5,6 +5,7 @@
 export type ExtractorUsed = 'selection' | 'main' | 'densest_block' | 'body_fallback' | 'none';
 
 export interface ExtractionResult {
+	pageAccess?: import('./page-access').PageAccess;
 	text: string;
 	extractor: ExtractorUsed;
 	truncated: boolean;

@@ -19,6 +19,14 @@ const requests = [];
 let mode = 'success';
 const description = 'Synthetic engineering responsibility with verified career facts. '.repeat(12);
 const fixtures = [
+  { name: 'challenge', title: undefined, company: undefined, pageTitle: 'Just a moment...', access: 'challenge', html:
+    '<h1>example.com</h1><p>Performing security verification. Performance and Security by Cloudflare.</p>' },
+  { name: 'login', title: undefined, company: undefined, pageTitle: 'Sign in', access: 'login_required', html:
+    '<h1>Sign in</h1><input type="password"><p>Please log in to continue.</p>' },
+  { name: 'restricted', title: undefined, company: undefined, pageTitle: 'Access denied', access: 'restricted', html:
+    '<h1>Access denied</h1><p>Your request was blocked.</p>' },
+  { name: 'job-with-login-form', title: 'Security Engineer', company: undefined, html:
+    '<h1>Security Engineer</h1><p>Build Cloudflare integrations and browser security tools.</p><input type="password">' },
   { name: 'json-ld', title: 'Data Engineer', company: 'Fixture Labs', html:
     '<script type="application/ld+json">{"@graph":[{"@type":["JobPosting"],"title":"Data Engineer","hiringOrganization":{"name":"Fixture Labs"}}]}</script><h1>Unrelated heading</h1>' },
   { name: 'microdata', title: 'Data Analyst', company: 'Fixture Analytics', html:
@@ -33,7 +41,7 @@ const server = http.createServer(async (req, res) => {
     const fixture = fixtures.find((item) => req.url === `/fixture/${item.name}`);
     if (fixture) {
       res.writeHead(200, { 'Content-Type': 'text/html' });
-      res.end(`<title>Original fixture title</title><main>${fixture.html}<p>${description}</p></main>`);
+      res.end(`<title>${fixture.pageTitle || 'Original fixture title'}</title><main>${fixture.html}<p>${description}</p></main>`);
       return;
     }
   }
@@ -43,14 +51,15 @@ const server = http.createServer(async (req, res) => {
   }
   let body = '';
   for await (const chunk of req) body += chunk;
-  requests.push({ headers: req.headers, body: JSON.parse(body) });
+  const capture = JSON.parse(body);
+  requests.push({ headers: req.headers, body: capture });
   if (mode === 'disconnect') { req.socket.destroy(); return; }
   if (mode === 'delayed') await new Promise((resolve) => setTimeout(resolve, 300));
   res.setHeader('Content-Type', 'application/json');
   if (mode === 'http-error') {
     res.writeHead(503).end(JSON.stringify({ message: 'Synthetic API unavailable' }));
   } else {
-    res.end(JSON.stringify({ ref: `TEST-${requests.length}`, capture_completeness: 'CAPTURED_COMPLETE',
+    res.end(JSON.stringify({ ref: `TEST-${requests.length}`, capture_completeness: capture.metadata?.page_access ? 'NEEDS_ENRICHMENT' : 'CAPTURED_COMPLETE',
       duplicate_of_job_id: mode === 'duplicate' ? 'original-fixture-id' : null }));
   }
 });
@@ -97,18 +106,24 @@ async function main() {
     }
     for (const fixture of fixtures) {
       await page.goto(`${origin}/fixture/${fixture.name}`);
-      await save('Saved as');
+      await save(fixture.access ? 'URL saved as' : 'Saved as');
       const { headers, body } = requests.at(-1);
       assert.equal(body.job_title, fixture.title);
       assert.equal(body.company_name, fixture.company);
-      assert.equal(body.page_title, 'Original fixture title');
+      assert.equal(body.page_title, fixture.pageTitle || 'Original fixture title');
+      assert.equal(body.metadata.page_access, fixture.access);
       assert.equal(body.url, `${origin}/fixture/${fixture.name}`);
       assert.equal(body.capture_method, 'extension');
-      assert(body.raw_text.includes(description.trim()));
+      if (fixture.access) {
+        assert.equal(body.raw_text, undefined, 'Blocked page text must not be submitted');
+      } else {
+        assert(body.raw_text.includes(description.trim()));
+      }
       assert.equal(headers['x-api-key'], 'synthetic-test-only-key');
       assert(headers['idempotency-key']);
       results.push(`${fixture.name}: metadata and full description`);
     }
+    await page.goto(`${origin}/fixture/heading`);
     mode = 'delayed';
     const count = requests.length;
     await page.bringToFront();
