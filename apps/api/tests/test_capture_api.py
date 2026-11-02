@@ -59,6 +59,30 @@ async def test_mobile_share_with_only_url_and_title_saves_as_partial(
     assert response.json()["capture_completeness"] == "CAPTURED_PARTIAL"
 
 
+async def test_capture_uses_job_metadata_and_preserves_original_page_title(
+    client: httpx.AsyncClient,
+) -> None:
+    envelope = _envelope(job_title="  Master Data Engineer  ", company_name="Fitch Group")
+    capture = await client.post("/api/v1/jobs/capture", json=envelope)
+    detail = (await client.get(f"/api/v1/jobs/{capture.json()['job_id']}")).json()
+
+    assert detail["title"] == "Master Data Engineer"
+    assert detail["company"] == "Fitch Group"
+    assert detail["snapshots"][0]["page_title"] == envelope["page_title"]
+
+
+async def test_capture_without_job_metadata_keeps_page_title(
+    client: httpx.AsyncClient,
+) -> None:
+    capture = await client.post(
+        "/api/v1/jobs/capture", json=_envelope(job_title="  ", company_name="  ")
+    )
+    detail = (await client.get(f"/api/v1/jobs/{capture.json()['job_id']}")).json()
+
+    assert detail["title"] == "Senior ML Engineer - Acme"
+    assert detail["company"] is None
+
+
 async def test_manual_url_with_no_text_needs_enrichment(client: httpx.AsyncClient) -> None:
     envelope = _envelope(capture_method="manual_url", raw_text=None)
     response = await client.post("/api/v1/jobs/capture", json=envelope)

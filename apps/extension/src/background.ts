@@ -84,6 +84,8 @@ async function captureActiveTab(): Promise<CaptureOutcome> {
 			url: tab.url,
 			source_hint: safeHostname(tab.url),
 			page_title: tab.title ?? '',
+			job_title: extraction.jobTitle,
+			company_name: extraction.companyName,
 			raw_text: extraction.text || undefined,
 			capture_method: 'extension',
 			captured_at: new Date().toISOString(),
@@ -92,7 +94,10 @@ async function captureActiveTab(): Promise<CaptureOutcome> {
 				truncated: extraction.truncated,
 				extension_version: chrome.runtime.getManifest().version
 			}
-		})
+		}),
+		signal: AbortSignal.timeout(10_000)
+	}).catch(() => {
+		throw new Error('Cannot reach OSCAR API. Check that the backend is running and the API URL is correct, then try Save again.');
 	});
 
 	const body = await response.json().catch(() => ({}));

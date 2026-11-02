@@ -10,6 +10,7 @@
 // eval'd code. Messaging is robust regardless of how the bundler wraps this.
 
 import type { ExtractionResult, ExtractorUsed } from './types';
+import { extractJobMetadata } from './job-metadata';
 
 const MIN_COMPLETE_LENGTH = 400; // mirrors the server's own floor (docs/05 §3)
 const MAX_CHARS = 200_000; // docs/05 §3: capped, never rejected
@@ -75,6 +76,6 @@ export function extractGenericJobText(): ExtractionResult {
 }
 
 (function run() {
-	const result = extractGenericJobText();
+	const result = { ...extractGenericJobText(), ...extractJobMetadata() };
 	chrome.runtime.sendMessage({ type: 'EXTRACTION_RESULT', payload: result });
 })();

@@ -8,6 +8,8 @@ export interface ExtractionResult {
 	text: string;
 	extractor: ExtractorUsed;
 	truncated: boolean;
+	jobTitle?: string;
+	companyName?: string;
 }
 
 export interface CaptureOutcome {

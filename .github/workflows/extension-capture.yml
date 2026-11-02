@@ -1,0 +1,67 @@
+name: Extension capture verification
+on:
+  pull_request:
+    paths:
+      - 'apps/extension/**'
+      - 'apps/api/src/oscar_api/modules/jobs/**'
+      - 'scripts/extension/**'
+      - '.github/workflows/extension-capture.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  chromium:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: oscar
+          POSTGRES_PASSWORD: oscar
+          POSTGRES_DB: oscar_simulation_extension
+        ports: ['5432:5432']
+        options: --health-cmd "pg_isready -U oscar -d oscar_simulation_extension" --health-interval 5s --health-timeout 3s --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: astral-sh/setup-uv@v5
+      - name: Install, check and build
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq xvfb xdotool ffmpeg xauth
+          (cd apps/api && uv sync --frozen --python 3.12)
+          (cd apps/extension && npm ci && npm run check && npm run build && cp INSTALL.md dist/ && cd dist && zip -qr ../OSCAR-Extension-0.1.1.zip .)
+          (cd apps/web && npm ci && npx playwright install --with-deps chromium && npm run build)
+      - name: Verify native popup, live pages, duplicates and backend failure
+        env:
+          API_BASE_URL: http://127.0.0.1:8000/api/v1
+          API_KEY: simulation-only-key
+          DEMO_OUTPUT: ${{ runner.temp }}/oscar-capture
+          DEMO_DATABASE_URL: postgresql+psycopg://oscar:oscar@127.0.0.1:5432/oscar_simulation_extension
+        run: |
+          set -euo pipefail
+          mkdir -p "$DEMO_OUTPUT"
+          (cd apps/api && exec .venv/bin/python scripts/serve_simulation.py --database-url "$DEMO_DATABASE_URL" --storage-dir "$DEMO_OUTPUT/pdf" --port 8000) >"$DEMO_OUTPUT/api.log" 2>&1 &
+          export DEMO_API_PID=$!
+          (cd apps/web && exec npm run preview -- --host 127.0.0.1 --port 5173 --strictPort) >"$DEMO_OUTPUT/web.log" 2>&1 &
+          web_pid=$!
+          trap 'kill "$web_pid" "$DEMO_API_PID" 2>/dev/null || true' EXIT
+          curl --retry 15 --retry-all-errors --retry-delay 1 -fsS http://127.0.0.1:8000/health | jq -e '.env == "simulation" and .db == "ok"'
+          curl --retry 12 --retry-all-errors --retry-delay 1 -fsS http://127.0.0.1:5173/jobs -o /dev/null
+          xvfb-run -a -s '-screen 0 1280x820x24' node scripts/extension/verify-capture.cjs
+          ffmpeg -loglevel error -i "$DEMO_OUTPUT/record.mkv" -c:v libx264 -crf 19 -pix_fmt yuv420p -movflags +faststart "$DEMO_OUTPUT/OSCAR-Capture-0.1.1.mp4"
+      - name: Save package and evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: oscar-extension-0.1.1
+          path: |
+            apps/extension/OSCAR-Extension-0.1.1.zip
+            ${{ runner.temp }}/oscar-capture/*.mp4
+            ${{ runner.temp }}/oscar-capture/*.png
+            ${{ runner.temp }}/oscar-capture/*.json
+            ${{ runner.temp }}/oscar-capture/*.log
+          retention-days: 14
