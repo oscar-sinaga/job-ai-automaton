@@ -159,6 +159,30 @@ async def test_generate_cv_without_raw_jd_text_is_validation_error(
     assert fake_llm.calls == []  # never even called the model
 
 
+async def test_generate_cv_rejects_partial_shared_text_before_calling_model(
+    client: httpx.AsyncClient, fake_llm
+) -> None:
+    url = "https://example.com/jobs/shared-link-only"
+    capture = await client.post(
+        "/api/v1/jobs/capture",
+        json={
+            "url": url,
+            "captured_at": dt.datetime.now(dt.UTC).isoformat(),
+            "capture_method": "mobile_share",
+            "page_title": "Data Engineer",
+            "shared_text": f"Data Engineer\n{url}",
+        },
+    )
+    assert capture.json()["capture_completeness"] == "CAPTURED_PARTIAL"
+    job_id = capture.json()["job_id"]
+    response = await client.post(f"/api/v1/jobs/{job_id}/generate-cv", json={})
+    assert response.status_code == 422
+    assert response.json()["error_type"] == "VALIDATION_FAILED"
+    assert "full job description" in response.json()["message"]
+    assert fake_llm.calls == []
+    assert (await client.get(f"/api/v1/jobs/{job_id}/cv-versions")).json() == []
+
+
 async def test_generate_cv_when_provider_times_out_is_llm_unavailable(
     client: httpx.AsyncClient,
 ) -> None:

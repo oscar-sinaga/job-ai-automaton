@@ -132,6 +132,7 @@ async function main() {
     await page.getByPlaceholder('Paste the full job description here…').fill(description);
     await page.getByRole('button', { name: 'Save description', exact: true }).tap();
     await expect(page.locator('pre')).toHaveText(description);
+    await expect(page.getByRole('button', { name: 'Generate CV', exact: true })).toBeEnabled();
     assert.equal((await api(`/api/v1/jobs/${sharedId}`)).capture_completeness, 'CAPTURED_COMPLETE');
     await shot('04-description-completed');
     report.checks.push({ name: 'Shared-text receiver and enrichment on Android',
