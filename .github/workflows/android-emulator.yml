@@ -24,7 +24,7 @@ jobs:
           node-version: '24'
       - name: Install test dependencies and start isolated application
         run: |
-          cd apps/web && npm ci && npx playwright install android && cd ../..
+          cd apps/web && npm ci && cd ../..
           python scripts/pilot.py init --simulation
           python scripts/pilot.py start --simulation
           mkdir -p "$RUNNER_TEMP/android-evidence"

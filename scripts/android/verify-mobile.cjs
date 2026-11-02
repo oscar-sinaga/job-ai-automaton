@@ -56,6 +56,21 @@ async function main() {
     fs.writeFileSync(path.join(output, `${name}.xml`), xml);
     return xml;
   };
+  let action = 0;
+  const nativeTap = async selector => {
+    // Use one UI Automator observer. Mixing its dumps with a second persistent
+    // instrumentation driver can disconnect that driver's accessibility client.
+    const tree = await nativeTree(`native-action-${++action}`);
+    const nodes = tree.match(/<node\b[^>]*>/g) || [];
+    const matches = nodes.filter(node => Object.entries(selector).every(([key, value]) =>
+      node.includes(`${key === 'desc' ? 'content-desc' : key}="${value}"`)));
+    assert.equal(matches.length, 1, `Native control must be unambiguous: ${JSON.stringify(selector)}`);
+    const bounds = matches[0].match(/bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"/);
+    assert(bounds, 'Native control must have visible bounds');
+    const [, left, top, right, bottom] = bounds.map(Number);
+    adb('shell', 'input', 'tap', String(Math.round((left + right) / 2)),
+      String(Math.round((top + bottom) / 2)));
+  };
   try {
     context = await device.launchBrowser({ viewport: null, hasTouch: true });
     page = await context.newPage();
@@ -64,9 +79,9 @@ async function main() {
     for (let attempt = 0; attempt < 4; attempt++) {
       const startup = await nativeTree(`00-chrome-startup-${attempt}`);
       if (startup.includes('Chrome isn\'t responding')) {
-        await device.tap({ text: 'Wait' });
+        await nativeTap({ text: 'Wait' });
       } else if (startup.includes('text="No thanks"')) {
-        await device.tap({ text: 'No thanks' });
+        await nativeTap({ text: 'No thanks' });
       } else {
         break;
       }
@@ -133,19 +148,19 @@ async function main() {
     const cdp = await context.newCDPSession(page);
     await cdp.send('Page.enable');
     report.installability = await cdp.send('Page.getInstallabilityErrors');
-    await device.tap({ desc: 'More options' });
+    await nativeTap({ desc: 'More options' });
     let tree = await nativeTree('06-chrome-menu');
     const installLabel = [...tree.matchAll(/text="([^"]+)"/g)].map(match => match[1])
       .find(text => /^(Add to Home screen|Install app)$/.test(text));
     if (installLabel) {
-      await device.tap({ text: installLabel });
+      await nativeTap({ text: installLabel });
       tree = await nativeTree('07-install-prompt');
       await shot('07-install-prompt');
       // Installing into the disposable AVD is part of this test. A shortcut
       // alone does not establish WebAPK share registration.
       for (const label of ['Install', 'Add', 'Create shortcut']) {
         if (tree.includes(`text="${label}"`)) {
-          await device.tap({ text: label });
+          await nativeTap({ text: label });
           break;
         }
       }

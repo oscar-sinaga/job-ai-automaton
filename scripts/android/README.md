@@ -3,6 +3,8 @@
 `android-emulator.yml` runs a Pixel-profile AVD (Android API 35, Google APIs,
 x86_64) and Chrome **inside Android**. Playwright connects over ADB; the browser
 uses the Android window (`viewport: null`) and its actual user agent. The
+native controls are identified from fresh UI Automator trees and tapped through
+ADB, so the test does not run two competing accessibility instrumentation drivers. The
 application runs in the existing isolated Docker simulation stack. ADB reverses
 only the web port to the emulator; no public endpoint or real career data is used.
 
