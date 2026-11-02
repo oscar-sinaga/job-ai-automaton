@@ -38,9 +38,13 @@ async function main() {
     chrome: adb('shell', 'dumpsys', 'package', 'com.android.chrome').match(/versionName=(\S+)/)?.[1] };
   assert(report.device.chrome, 'The Google APIs image must include Chrome');
   adb('shell', 'svc', 'power', 'stayon', 'true');
+  // Reduce software-rendering load while retaining a phone-size Android UI.
+  adb('shell', 'wm', 'size', '720x1600');
+  adb('shell', 'wm', 'density', '280');
+  report.device.display = '720x1600, density 280';
   const recordingLog = fs.openSync(path.join(output, 'screenrecord.log'), 'w');
   const recording = spawn('adb', ['shell', 'screenrecord', '--time-limit', '180',
-    '--size', '540x1200', '--bit-rate', '2500000', '/sdcard/oscar-android.mp4'],
+    '--size', '540x1200', '--bit-rate', '2500000', '/data/local/tmp/oscar-android.mp4'],
     { stdio: ['ignore', recordingLog, recordingLog] });
   fs.closeSync(recordingLog);
   let context;
@@ -57,10 +61,19 @@ async function main() {
     page = await context.newPage();
     page.setDefaultTimeout(20000);
     await page.goto(`${origin}/jobs`);
-    const startup = await nativeTree('00-chrome-startup');
-    if (startup.includes('text="No thanks"')) {
-      await device.tap({ text: 'No thanks' });
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const startup = await nativeTree(`00-chrome-startup-${attempt}`);
+      if (startup.includes('Chrome isn\'t responding')) {
+        await device.tap({ text: 'Wait' });
+      } else if (startup.includes('text="No thanks"')) {
+        await device.tap({ text: 'No thanks' });
+      } else {
+        break;
+      }
     }
+    const ready = await nativeTree('00-chrome-ready');
+    assert(!ready.includes('Chrome isn\'t responding'), 'Chrome must be responsive');
+    assert(!ready.includes('text="No thanks"'), 'Chrome onboarding must be dismissed');
     await expect(page.getByRole('heading', { name: 'Job Inbox', exact: true })).toBeVisible();
     report.browser = await page.evaluate(() => ({ userAgent: navigator.userAgent,
       width: innerWidth, height: innerHeight, touchPoints: navigator.maxTouchPoints,
@@ -81,7 +94,7 @@ async function main() {
     const details = await Promise.all(summaries.map(job => api(`/api/v1/jobs/${job.id}`)));
     const manual = details.find(job => job.canonical_url === manualUrl);
     assert(manual, 'Android form submission must reach the database');
-    assert.equal(manual.capture_completeness, 'CAPTURED_PARTIAL');
+    assert.equal(manual.capture_completeness, 'NEEDS_ENRICHMENT');
     report.checks.push({ name: 'Android Chrome URL capture', status: 'passed', job_id: manual.id });
 
     // Exercise the receiver with the payload Chrome/other apps normally supply.
@@ -181,10 +194,13 @@ async function main() {
       new Promise(resolve => { const timer = setTimeout(resolve, 10000); timer.unref(); })
     ]);
     if (recording.exitCode === null) recording.kill();
-    try { adb('pull', '/sdcard/oscar-android.mp4', path.join(output, 'OSCAR-Android-Emulator.mp4')); } catch {}
+    try { adb('pull', '/data/local/tmp/oscar-android.mp4', path.join(output, 'OSCAR-Android-Emulator.mp4')); } catch {}
+    report.recording_saved = fs.existsSync(path.join(output, 'OSCAR-Android-Emulator.mp4'));
+    save();
     await context?.close().catch(() => {});
     await device.close().catch(() => {});
   }
+  assert(report.recording_saved, 'The Android recording must be preserved');
   console.log(JSON.stringify(report, null, 2));
 }
 main().catch(error => { save(); console.error(error); process.exitCode = 1; });

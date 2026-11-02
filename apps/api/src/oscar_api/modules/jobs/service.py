@@ -105,6 +105,15 @@ def derive_capture_completeness(envelope: CaptureEnvelope) -> CaptureCompletenes
     if _blocked_page(envelope):
         return CaptureCompleteness.NEEDS_ENRICHMENT
     text = _effective_text(envelope)
+    if envelope.capture_method == CaptureMethod.mobile_share and not any(
+        candidate and candidate.strip() for candidate in (envelope.raw_text, envelope.selected_text)
+    ):
+        # Share sheets often put the title and a long tracking URL in EXTRA_TEXT.
+        # Those characters are not evidence that a job description was shared.
+        # Only classification uses this cleaned text; snapshots stay verbatim.
+        text = re.sub(r"https?://\S+", "", text or "", flags=re.IGNORECASE)
+        if envelope.page_title and envelope.page_title.strip():
+            text = re.sub(re.escape(envelope.page_title.strip()), "", text, flags=re.IGNORECASE)
     if text and len(text.strip()) >= MIN_COMPLETE_TEXT_CHARS:
         return CaptureCompleteness.CAPTURED_COMPLETE
     if envelope.capture_method == CaptureMethod.manual_url and not text:

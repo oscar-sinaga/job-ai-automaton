@@ -21,3 +21,8 @@ This is not a physical-phone, iOS, Tailscale/mobile-data, live-job extraction,
 real AI, or real application submission test. It does not install a native OSCAR
 wrapper or change the product's PWA architecture. The share menu uses only a
 synthetic URL and no recipient is selected.
+
+The mobile payload includes a link in `text`, as Android share sources commonly
+do. Completeness must count description content rather than the URL and repeated
+page title. API regressions also verify that the original shared text remains
+unchanged in the saved snapshot.
