@@ -89,13 +89,13 @@ async function main() {
     throw Error('UI Automator must produce a fresh tree');
   };
   let action = 0;
-  const nativeTap = async selector => {
+  const nativeTap = async (selector, optional = false) => {
     // Use one UI Automator observer. Mixing its dumps with a second persistent
     // instrumentation driver can disconnect that driver's accessibility client.
     let tree = await nativeTree(`native-action-${++action}`);
     if (!['Wait', 'Close app'].includes(selector.text) && tree.includes("isn't responding")) {
       report.system_dialog_recoveries = (report.system_dialog_recoveries || 0) + 1;
-      await nativeTap({ text: tree.includes('Pixel Launcher') ? 'Close app' : 'Wait' });
+      await nativeTap({ text: tree.includes('Pixel Launcher') ? 'Close app' : 'Wait' }, true);
       tree = await nativeTree(`native-action-${++action}`);
     }
     const nodes = tree.match(/<node\b[^>]*>/g) || [];
@@ -103,12 +103,14 @@ async function main() {
       node.includes(`${key === 'desc' ? 'content-desc' : key}="${value}"`)));
     const clickable = matches.filter(node => node.includes('clickable="true"'));
     if (matches.length > 1 && clickable.length === 1) matches = clickable;
+    if (optional && matches.length === 0) return false;
     assert.equal(matches.length, 1, `Native control must be unambiguous: ${JSON.stringify(selector)}`);
     const bounds = matches[0].match(/bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"/);
     assert(bounds, 'Native control must have visible bounds');
     const [, left, top, right, bottom] = bounds.map(Number);
     adb('shell', 'input', 'tap', String(Math.round((left + right) / 2)),
       String(Math.round((top + bottom) / 2)));
+    return true;
   };
   try {
     progress('android-browser');
@@ -317,14 +319,14 @@ async function main() {
       }
       if (tree.includes('text="Save to OSCAR"')) { imported = true; break; }
       if (tree.includes('Importing shortcuts failed')) throw Error('Native shortcut import failed');
-      if (tree.includes('text="OSCAR"')) { await nativeTap({ text: 'OSCAR' }); continue; }
+      if (tree.includes('text="OSCAR"')) { await nativeTap({ text: 'OSCAR' }, true); continue; }
       if (tree.includes('content-desc="Go back"') && tree.includes('text="Import / Export"')) {
-        await nativeTap({ desc: 'Go back' });
+        await nativeTap({ desc: 'Go back' }, true);
         continue;
       }
       const label = ['OK', 'Got it', 'Get started', "Don't allow"]
         .find(text => tree.includes(`text="${text}"`));
-      if (label) await nativeTap({ text: label });
+      if (label) await nativeTap({ text: label }, true);
       else if (!tree.includes('Importing…')) adb('shell', 'input', 'keyevent', '4');
     }
     assert(imported, 'The native app must show the imported Save to OSCAR shortcut');
