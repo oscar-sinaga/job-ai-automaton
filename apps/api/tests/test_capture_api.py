@@ -248,8 +248,7 @@ async def test_job_mentioning_cloudflare_is_still_captured(client: httpx.AsyncCl
         json=_envelope(
             page_title="Cloudflare Security Engineer",
             job_title="Security Engineer",
-            raw_text="Build Cloudflare verify you are human widgets and SQL pipelines. "
-            * 10,
+            raw_text="Build Cloudflare verify you are human widgets and SQL pipelines. " * 10,
             metadata={"page_access": {"unknown": True}},
         ),
     )
