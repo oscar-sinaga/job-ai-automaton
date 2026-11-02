@@ -5,8 +5,9 @@ x86_64) and Chrome **inside Android**. Playwright connects over ADB; the browser
 uses the Android window (`viewport: null`) and its actual user agent. The
 native controls are identified from fresh UI Automator trees and tapped through
 ADB, so the test does not run two competing accessibility instrumentation drivers. The
-application runs in the existing isolated Docker simulation stack. ADB reverses
-only the web port to the emulator; no public endpoint or real career data is used.
+application runs in the existing isolated Docker simulation stack. ADB forwards
+the web, API and temporary private-import ports to the emulator; no public
+endpoint or real career data is used.
 
 The test records the device screen and checks URL capture, a shared-text payload
 at the share receiver, partial-job enrichment, and an invalid-payload error with

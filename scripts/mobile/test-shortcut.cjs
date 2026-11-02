@@ -19,13 +19,25 @@ try {
   assert.doesNotThrow(() => JSON.parse(shortcut.bodyContent), 'Unresolved template must pass native preflight');
   const values = new Map(document.variables.map(variable => [variable.id, variable.value]));
   const byName = key => document.variables.find(variable => variable.key === `oscar_${key}`).id;
+  // Match the app's v4.9 raw-placeholder grammar, including its UUIDv4-only
+  // branch. Import/JS UUID validation is broader and must not mask this case.
+  const rawPlaceholder = /\{\{([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}|[0-9]+|[A-Za-z0-9_]{1,30})\}\}/gi;
+  const resolve = template => template.replace(rawPlaceholder, (_, key) => {
+    const variable = document.variables.find(variable => variable.id === key || variable.key === key);
+    assert(variable, `Unknown variable: ${key}`);
+    return values.get(variable.id);
+  });
   const run = (text, title) => {
     values.set(byName('shared_text'), text);
     values.set(byName('shared_title'), title);
     vm.runInNewContext(shortcut.codeOnPrepare, {
       getVariable: id => values.get(id), setVariable: (id, value) => values.set(id, value)
     });
-    const body = shortcut.bodyContent.replace(/\{\{([^}]+)\}\}/g, (_, id) => values.get(id));
+    const body = resolve(shortcut.bodyContent);
+    assert(!body.includes('{{'), 'All request placeholders must resolve in the native app');
+    const headers = Object.fromEntries(shortcut.headers.map(header => [header.key, resolve(header.value)]));
+    assert.equal(headers['X-API-Key'], 'simulation-only-shortcut-test');
+    assert.equal(headers['Idempotency-Key'], values.get(byName('capture_key')));
     return { body: JSON.parse(body), key: values.get(byName('capture_key')) };
   };
   const text = 'Data Engineer "Python"\nhttps://example.com/jobs/1?track=android';

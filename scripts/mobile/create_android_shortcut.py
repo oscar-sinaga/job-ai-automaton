@@ -20,7 +20,10 @@ def reference(name: str) -> str:
 
 
 def placeholder(name: str) -> str:
-    return "{{" + identifier(name) + "}}"
+    # HTTP Shortcuts 4.9 accepts UUIDv5 IDs in imports and JS references, but
+    # its raw-template UUID regex only matches UUIDv4. Named keys resolve both
+    # request-body and header variables without leaving literal placeholders.
+    return "{{oscar_" + name + "}}"
 
 
 def build_import(api_base: str, api_key: str) -> dict:
