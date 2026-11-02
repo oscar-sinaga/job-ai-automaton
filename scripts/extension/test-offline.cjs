@@ -19,6 +19,10 @@ const requests = [];
 let mode = 'success';
 const description = 'Synthetic engineering responsibility with verified career facts. '.repeat(12);
 const fixtures = [
+  { name: 'jobstreet', title: 'Data Engineer', company: 'Fixture Jobstreet Employer', html:
+    '<h1>Data Engineer</h1><button><span data-automation="advertiser-name">Fixture Jobstreet Employer</span></button>' },
+  { name: 'kalibrr', title: 'Data Engineer', company: 'Fixture Kalibrr Employer', html:
+    '<h1>Data Engineer</h1><a href="/c/example/jobs?action=Company%20Name"><h2>Fixture Kalibrr Employer</h2></a>' },
   { name: 'challenge', title: undefined, company: undefined, pageTitle: 'Just a moment...', access: 'challenge', html:
     '<h1>example.com</h1><p>Performing security verification. Performance and Security by Cloudflare.</p>' },
   { name: 'login', title: undefined, company: undefined, pageTitle: 'Sign in', access: 'login_required', html:
