@@ -30,7 +30,7 @@ from oscar_api.modules.cv.models import CVGenerationRun, CVVersion
 from oscar_api.modules.cv.retrieval import retrieve_facts
 from oscar_api.modules.cv.schemas import CVDraft, GenerateCVRequest, GroundingReport
 from oscar_api.modules.cv.sections import snapshot_sections
-from oscar_api.modules.jobs.models import JobEvent, JobEventType
+from oscar_api.modules.jobs.models import CaptureCompleteness, JobEvent, JobEventType
 from oscar_api.modules.jobs.service import get_job_or_404
 from oscar_api.ports.llm import ContentBlock, LLMProvider, LLMRefusalError
 
@@ -110,6 +110,8 @@ async def generate_cv(
     session: Session, llm: LLMProvider, *, job_id: int, request: GenerateCVRequest
 ) -> tuple[CVVersion, CVGenerationRun, GroundingReport, list[str]]:
     job = get_job_or_404(session, job_id)
+    if job.capture_completeness != CaptureCompleteness.CAPTURED_COMPLETE:
+        raise ValidationFailedError("Save the full job description before generating a CV")
     if not job.snapshots:
         raise ValidationFailedError("Job has no raw snapshot to generate a CV from")
     snapshot = job.snapshots[-1]

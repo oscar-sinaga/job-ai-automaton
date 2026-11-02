@@ -3,6 +3,7 @@
 .env.pilot
 .env.simulation
 *.env.local
+*.oscar-shortcut.zip
 
 # Python
 apps/api/.venv/

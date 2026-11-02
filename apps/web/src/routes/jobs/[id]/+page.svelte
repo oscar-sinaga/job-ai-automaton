@@ -129,12 +129,12 @@
 		<form method="post" action="?/generateCv" use:enhance class="mt-3">
 			<button
 				type="submit"
-				disabled={!data.raw?.raw_text}
+				disabled={needsEnrichment || !data.raw?.raw_text}
 				class="rounded bg-slate-900 px-4 py-1.5 text-sm text-white hover:bg-slate-800 disabled:opacity-40"
 			>
 				{data.cvVersions.length ? 'Regenerate CV' : 'Generate CV'}
 			</button>
-			{#if !data.raw?.raw_text}
+			{#if needsEnrichment || !data.raw?.raw_text}
 				<p class="mt-1 text-xs text-slate-500">Save the job description text first.</p>
 			{/if}
 			{#if form?.error}<p class="mt-2 text-sm text-red-600">{form.error}</p>{/if}

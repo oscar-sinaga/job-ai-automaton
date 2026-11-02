@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import datetime as dt
 
+import pytest
+
 from oscar_api.modules.jobs.models import CaptureCompleteness, CaptureMethod
 from oscar_api.modules.jobs.schemas import CaptureEnvelope
 from oscar_api.modules.jobs.service import derive_capture_completeness
@@ -45,6 +47,20 @@ def test_complete_when_only_shared_text_present() -> None:
 
 def test_partial_when_mobile_share_has_no_text() -> None:
     envelope = _envelope(capture_method=CaptureMethod.mobile_share, page_title="ML Engineer")
+    assert derive_capture_completeness(envelope) == CaptureCompleteness.CAPTURED_PARTIAL
+
+
+@pytest.mark.parametrize("include_title", [False, True])
+def test_mobile_title_and_long_url_are_not_a_job_description(include_title: bool) -> None:
+    title = "Senior Data Engineer for Analytics and Reporting at Example Company"
+    url = "https://example.com/jobs/123?tracking=" + "x" * 120
+    shared = f"{title}\n{url}" if include_title else url
+    envelope = _envelope(
+        capture_method=CaptureMethod.mobile_share,
+        url=url,
+        page_title=title,
+        shared_text=shared,
+    )
     assert derive_capture_completeness(envelope) == CaptureCompleteness.CAPTURED_PARTIAL
 
 

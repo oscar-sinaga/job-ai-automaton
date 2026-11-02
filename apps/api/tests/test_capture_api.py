@@ -59,6 +59,28 @@ async def test_mobile_share_with_only_url_and_title_saves_as_partial(
     assert response.json()["capture_completeness"] == "CAPTURED_PARTIAL"
 
 
+async def test_mobile_share_preserves_long_link_without_calling_it_a_description(
+    client: httpx.AsyncClient,
+) -> None:
+    url = "https://example.com/jobs/123?tracking=" + "x" * 120
+    title = "Senior Data Engineer for Analytics and Reporting at Example Company"
+    shared = f"{title}\n{url}"
+    response = await client.post(
+        "/api/v1/jobs/capture",
+        json=_envelope(
+            capture_method="mobile_share",
+            raw_text=None,
+            url=url,
+            page_title=title,
+            shared_text=shared,
+        ),
+    )
+    assert response.status_code == 201
+    assert response.json()["capture_completeness"] == "CAPTURED_PARTIAL"
+    raw = await client.get(f"/api/v1/jobs/{response.json()['job_id']}/raw")
+    assert raw.json()["raw_text"] == shared
+
+
 async def test_capture_uses_job_metadata_and_preserves_original_page_title(
     client: httpx.AsyncClient,
 ) -> None:

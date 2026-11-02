@@ -1,0 +1,82 @@
+name: Android emulator verification
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/android-emulator.yml'
+      - 'scripts/android/**'
+      - 'scripts/mobile/**'
+  workflow_dispatch:
+    inputs:
+      probe_pwa:
+        description: Also inspect browser-managed WebAPK installation
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: android-emulator-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+jobs:
+  android-chrome:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install test dependencies and start isolated application
+        run: |
+          cd apps/web && npm ci && cd ../..
+          node scripts/mobile/test-shortcut.cjs
+          python scripts/pilot.py init --simulation
+          python scripts/pilot.py start --simulation
+          mkdir -p "$RUNNER_TEMP/android-evidence"
+          curl -fL --retry 3 https://github.com/Waboodoo/HTTP-Shortcuts/releases/download/v4.9.0/app-x86_64-release.apk -o "$RUNNER_TEMP/http-shortcuts.apk"
+          python - <<'PY'
+          import hashlib, os
+          from pathlib import Path
+          digest = hashlib.sha256((Path(os.environ['RUNNER_TEMP']) / 'http-shortcuts.apk').read_bytes()).hexdigest()
+          assert digest == 'd369b98a07f1d20cc5494d5d4300d208ff99efa4e571780b61a69dde6368ca3a'
+          print('Verified official HTTP Shortcuts 4.9.0 APK')
+          PY
+      - name: Enable emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Test Chrome inside Android, including the native share picker
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
+        env:
+          ANDROID_EVIDENCE: ${{ runner.temp }}/android-evidence
+          ANDROID_HTTP_SHORTCUTS_APK: ${{ runner.temp }}/http-shortcuts.apk
+          ANDROID_PROBE_PWA: ${{ github.event_name == 'workflow_dispatch' && inputs.probe_pwa && '1' || '0' }}
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          ram-size: 3072M
+          cores: 4
+          heap-size: 512M
+          disk-size: 4096M
+          emulator-options: -no-window -gpu swiftshader_indirect -feature -Vulkan -noaudio -no-boot-anim -no-snapshot-save -camera-back none
+          disable-animations: true
+          script: node scripts/android/verify-mobile.cjs
+      - name: Preserve application logs
+        if: always()
+        run: |
+          mkdir -p "$RUNNER_TEMP/android-evidence"
+          docker compose -p oscar-simulation --env-file .env.simulation -f compose.pilot.yml logs --no-color >"$RUNNER_TEMP/android-evidence/application.log" 2>&1 || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-emulator-evidence
+          path: ${{ runner.temp }}/android-evidence/
+          retention-days: 14
+      - name: Stop owned simulation stack
+        if: always()
+        run: test ! -f .env.simulation || python scripts/pilot.py stop --simulation
