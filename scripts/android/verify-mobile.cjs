@@ -57,6 +57,10 @@ async function main() {
     page = await context.newPage();
     page.setDefaultTimeout(20000);
     await page.goto(`${origin}/jobs`);
+    const startup = await nativeTree('00-chrome-startup');
+    if (startup.includes('text="No thanks"')) {
+      await device.tap({ text: 'No thanks' });
+    }
     await expect(page.getByRole('heading', { name: 'Job Inbox', exact: true })).toBeVisible();
     report.browser = await page.evaluate(() => ({ userAgent: navigator.userAgent,
       width: innerWidth, height: innerHeight, touchPoints: navigator.maxTouchPoints,
