@@ -38,8 +38,11 @@ async function main() {
     chrome: adb('shell', 'dumpsys', 'package', 'com.android.chrome').match(/versionName=(\S+)/)?.[1] };
   assert(report.device.chrome, 'The Google APIs image must include Chrome');
   adb('shell', 'svc', 'power', 'stayon', 'true');
+  const recordingLog = fs.openSync(path.join(output, 'screenrecord.log'), 'w');
   const recording = spawn('adb', ['shell', 'screenrecord', '--time-limit', '180',
-    '--bit-rate', '2500000', '/sdcard/oscar-android.mp4'], { stdio: 'ignore' });
+    '--size', '540x1200', '--bit-rate', '2500000', '/sdcard/oscar-android.mp4'],
+    { stdio: ['ignore', recordingLog, recordingLog] });
+  fs.closeSync(recordingLog);
   let context;
   let page;
   const shot = async name => device.screenshot({ path: path.join(output, `${name}.png`) });
@@ -50,7 +53,7 @@ async function main() {
     return xml;
   };
   try {
-    context = await device.launchBrowser({ viewport: null });
+    context = await device.launchBrowser({ viewport: null, hasTouch: true });
     page = await context.newPage();
     page.setDefaultTimeout(20000);
     await page.goto(`${origin}/jobs`);
