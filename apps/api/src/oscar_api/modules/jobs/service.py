@@ -70,11 +70,13 @@ def _is_verification_text(title: str | None, text: str | None) -> bool:
 
 
 def _blocked_page(envelope: CaptureEnvelope) -> bool:
-    return envelope.metadata.get("page_access") in {
+    access = envelope.metadata.get("page_access")
+    blocked = isinstance(access, str) and access in {
         "challenge",
         "login_required",
         "restricted",
-    } or any(
+    }
+    return blocked or any(
         _is_verification_text(envelope.page_title, text)
         for text in (envelope.raw_text, envelope.selected_text, envelope.shared_text)
     )
