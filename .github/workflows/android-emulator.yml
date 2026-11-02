@@ -6,6 +6,11 @@ on:
       - 'scripts/android/**'
       - 'scripts/mobile/**'
   workflow_dispatch:
+    inputs:
+      probe_pwa:
+        description: Also inspect browser-managed WebAPK installation
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -48,6 +53,7 @@ jobs:
         env:
           ANDROID_EVIDENCE: ${{ runner.temp }}/android-evidence
           ANDROID_HTTP_SHORTCUTS_APK: ${{ runner.temp }}/http-shortcuts.apk
+          ANDROID_PROBE_PWA: ${{ github.event_name == 'workflow_dispatch' && inputs.probe_pwa && '1' || '0' }}
         with:
           api-level: 35
           target: google_apis
@@ -57,7 +63,7 @@ jobs:
           cores: 4
           heap-size: 512M
           disk-size: 4096M
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot-save -camera-back none
+          emulator-options: -no-window -gpu swiftshader_indirect -feature -Vulkan -noaudio -no-boot-anim -no-snapshot-save -camera-back none
           disable-animations: true
           script: node scripts/android/verify-mobile.cjs
       - name: Preserve application logs

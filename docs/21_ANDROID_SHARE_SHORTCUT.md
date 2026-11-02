@@ -58,6 +58,8 @@ Tes penerima web, status instalasi PWA, dan jalur native HTTP Shortcuts dicatat
 terpisah di `result.json`. Untuk jalur native, pemilih Share Android harus benar-benar
 terbuka, aplikasi tujuan harus terlihat, dan hasilnya harus ada pada database
 serta layar sukses. Rekaman perangkat disimpan sebagai artifact Actions.
+Probe instalasi WebAPK bersifat opsional melalui input workflow `probe_pwa`;
+kelulusan jalur shortcut tidak menyatakan PWA sudah terdaftar di menu Share.
 
 Hasil emulator tidak menggantikan pengujian HP fisik, koneksi Tailscale/data
 seluler, iOS, atau aplikasi LinkedIn/Jobstreet asli. Sumber contoh pada tes

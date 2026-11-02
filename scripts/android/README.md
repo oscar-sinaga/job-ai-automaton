@@ -12,7 +12,9 @@ The test records the device screen and checks URL capture, a shared-text payload
 at the share receiver, partial-job enrichment, and an invalid-payload error with
 navigation back to the inbox. It inspects Chrome's installability result,
 attempts the visible install/home-screen action when available, and opens the
-native Android share picker. Evidence is preserved even on failure.
+native Android share picker when the optional `probe_pwa` workflow-dispatch
+input is enabled. Default runs focus on the native share-shortcut path below;
+they do not count PWA registration as passed. Evidence is preserved even on failure.
 
 `result.json` records browser checks and OS share registration separately. A
 successful receiver URL is **not** proof of Android dispatch. An absent OSCAR
