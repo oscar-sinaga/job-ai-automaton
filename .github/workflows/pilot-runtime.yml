@@ -1,0 +1,76 @@
+name: Local pilot runtime
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  compose-pilot:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Start isolated simulation stack
+        run: |
+          set -euo pipefail
+          python scripts/pilot.py init --simulation
+          python scripts/pilot.py start --simulation
+      - name: Exercise real images and persistent data
+        run: |
+          set -euo pipefail
+          python scripts/verify_pilot.py --state "$RUNNER_TEMP/pilot-state.json"
+          python scripts/pilot.py backup --simulation --directory "$RUNNER_TEMP/pilot-backup"
+          python scripts/pilot.py verify-backup --simulation --directory "$RUNNER_TEMP/pilot-backup"
+          python scripts/pilot.py stop --simulation
+          python scripts/pilot.py start --simulation
+          python scripts/verify_pilot.py --state "$RUNNER_TEMP/pilot-state.json" --verify-state
+      - name: Verify normal mode with no AI credentials
+        run: |
+          set -euo pipefail
+          python scripts/pilot.py stop --simulation
+          python scripts/pilot.py init
+          python scripts/pilot.py start
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from urllib.request import Request, urlopen
+          from urllib.error import HTTPError
+          config = dict(line.split('=', 1) for line in Path('.env.pilot').read_text().splitlines())
+          with urlopen('http://127.0.0.1:8000/health') as response:
+              assert json.load(response)['env'] == 'local'
+          with urlopen('http://127.0.0.1:5173/jobs') as response:
+              assert b'Simulation mode' not in response.read()
+          request = Request('http://127.0.0.1:8000/api/v1/jobs/1/generate-cv', data=b'{}',
+                            headers={'X-API-Key': config['OSCAR_API_KEY'], 'Content-Type': 'application/json'})
+          try:
+              urlopen(request)
+              raise AssertionError('Missing AI key must be reported')
+          except HTTPError as error:
+              assert error.code == 503
+              assert json.load(error)['error_type'] == 'LLM_UNAVAILABLE'
+          print('PASS: normal mode starts and reports unavailable AI explicitly')
+          PY
+      - name: Preserve runtime logs
+        if: always()
+        run: |
+          mkdir -p "$RUNNER_TEMP/pilot-evidence"
+          for mode in simulation pilot; do
+            if test -f ".env.$mode"; then
+              docker compose -p "oscar-$mode" --env-file ".env.$mode" -f compose.pilot.yml logs --no-color >"$RUNNER_TEMP/pilot-evidence/$mode.log" 2>&1 || true
+            fi
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: local-pilot-runtime-evidence
+          path: ${{ runner.temp }}/pilot-evidence
+          retention-days: 14
+      - name: Stop owned stacks
+        if: always()
+        run: |
+          test ! -f .env.simulation || python scripts/pilot.py stop --simulation
+          test ! -f .env.pilot || python scripts/pilot.py stop

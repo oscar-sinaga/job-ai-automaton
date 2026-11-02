@@ -5,7 +5,7 @@
 	import { page } from '$app/state';
 	import { NAV_ITEMS } from '$lib/nav';
 
-	let { children } = $props();
+	let { children, data } = $props();
 
 	// Some platforms require an active service worker for PWA installability
 	// and Web Share Target eligibility (docs/09 §3, ADR-020).
@@ -43,10 +43,15 @@
 				{/each}
 			</ul>
 			<p class="mt-8 hidden text-xs text-slate-400 md:block">
-				Milestone 5 — analytics.<br />All P0 milestones built. See docs/15.
+				Personal workspace. Review each CV before export.
 			</p>
 		</nav>
 		<main class="min-w-0 flex-1 p-4 md:p-8">
+			{#if data.simulation}
+				<p role="status" class="mb-4 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+					Simulation mode — example data and deterministic CV output. AI quality is not evaluated.
+				</p>
+			{/if}
 			{@render children()}
 		</main>
 	</div>

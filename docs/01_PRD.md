@@ -152,7 +152,9 @@ All of FR-001…FR-011 accepted, plus the real-usage bar from master spec §29 /
 - **0** known fabricated claims in any exported/submitted CV
 - dashboard funnel and backlog verified correct against manual counts
 
-This bar is measured in **Milestone 6 (Stabilization)**, not at feature-complete. The repository today completes **Milestone 0 (Foundation)** only.
+This bar is measured in **Milestone 6 (Stabilization)**. Implementation now covers
+M0–M5 with further regression fixes. Current technical and real-usage readiness
+are recorded in the README and [20_MVP_PILOT.md](20_MVP_PILOT.md).
 
 ## 14. Future Roadmap
 

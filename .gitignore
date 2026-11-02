@@ -1,5 +1,7 @@
 # Secrets
 .env
+.env.pilot
+.env.simulation
 *.env.local
 
 # Python

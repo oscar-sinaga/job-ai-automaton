@@ -248,3 +248,18 @@ async def test_mark_submitted_is_exclusive_per_job(client: httpx.AsyncClient, fa
     assert second.json()["is_submitted"] is True
     first_now = await client.get(f"/api/v1/cv/{cv1_id}")
     assert first_now.json()["is_submitted"] is False
+
+
+async def test_missing_ai_key_returns_actionable_503(
+    client: httpx.AsyncClient, monkeypatch
+) -> None:
+    from oscar_api.config import get_settings
+
+    job_id, _, _ = await _setup_job_and_profile(client)
+    app.dependency_overrides.pop(get_llm_provider)
+    monkeypatch.setattr(get_settings(), "openai_api_key", "")
+    response = await client.post(f"/api/v1/jobs/{job_id}/generate-cv", json={})
+    assert response.status_code == 503
+    assert response.json()["error_type"] == "LLM_UNAVAILABLE"
+    assert "not configured" in response.json()["message"]
+    assert (await client.get(f"/api/v1/jobs/{job_id}")).status_code == 200
