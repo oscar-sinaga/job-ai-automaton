@@ -22,7 +22,9 @@ screen shortcut is also not proof that a WebAPK/share target is installed.
 This is not a physical-phone, iOS, Tailscale/mobile-data, live-job extraction,
 real AI, or real application submission test. It does not install a native OSCAR
 wrapper or change the product's PWA architecture. The share menu uses only a
-synthetic URL and no recipient is selected.
+synthetic URL; only the local OSCAR receiver may be selected, never an external
+recipient. If that receiver is registered, the test verifies the resulting
+mobile-share job in the database and its success screen on Android.
 
 The mobile payload includes a link in `text`, as Android share sources commonly
 do. Completeness must count description content rather than the URL and repeated

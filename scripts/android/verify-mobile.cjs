@@ -149,7 +149,7 @@ async function main() {
     const cdp = await context.newCDPSession(page);
     await cdp.send('Page.enable');
     report.installability = await cdp.send('Page.getInstallabilityErrors');
-    await nativeTap({ desc: 'More options' });
+    await nativeTap({ desc: 'Customize and control Google Chrome' });
     let tree = await nativeTree('06-chrome-menu');
     const installLabel = [...tree.matchAll(/text="([^"]+)"/g)].map(match => match[1])
       .find(text => /^(Add to Home screen|Install app)$/.test(text));
