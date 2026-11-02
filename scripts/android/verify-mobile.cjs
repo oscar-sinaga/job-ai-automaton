@@ -177,6 +177,11 @@ async function main() {
       // WebAPK installation is asynchronous. A shortcut is not sufficient.
       await expect.poll(() => adb('shell', 'pm', 'list', 'packages').includes('webapk'),
         { timeout: 30000 }).toBeTruthy().catch(() => {});
+      const settled = await nativeTree('08-install-settled');
+      if (settled.includes('text="Add to home screen"')) {
+        await nativeTap({ text: 'Add to home screen' });
+        await nativeTree('08-home-screen-confirmed');
+      }
     } else {
       adb('shell', 'input', 'keyevent', '4');
     }
@@ -185,6 +190,9 @@ async function main() {
 
     // A native Android ACTION_SEND resolver, without posting to any recipient.
     // Always record OS dispatch separately from the direct receiver check.
+    // Bring the actual Chrome activity back after any launcher pin dialog.
+    adb('shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-d', `${origin}/jobs`,
+      '-p', 'com.android.chrome');
     await page.bringToFront();
     await page.goto(`${origin}/jobs`);
     const osShareUrl = `https://example.com/jobs/android-os-share-${stamp}`;
@@ -197,8 +205,8 @@ async function main() {
       document.body.append(button);
     }, osShareUrl);
     await page.getByRole('button', { name: 'Android OS share test', exact: true }).tap();
-    await shot('09-native-android-share-picker');
     const shareTree = await nativeTree('09-native-android-share-picker');
+    await shot('09-native-android-share-picker');
     report.shareActivity = adb('shell', 'dumpsys', 'activity', 'activities').split('\n')
       .filter(line => /topResumedActivity|mResumedActivity/.test(line)).join('\n');
     const androidResolverVisible = /ChooserActivity|ResolverActivity/.test(report.shareActivity);
