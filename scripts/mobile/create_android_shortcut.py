@@ -57,10 +57,10 @@ if (getVariable({reference("last_share")}) !== identity ||
   setVariable({reference("last_share")}, identity);
   setVariable({reference("capture_key")}, key);
 }}
-setVariable({reference("request_body")}, JSON.stringify({{
-  url, page_title: title || undefined, shared_text: text,
-  capture_method: 'mobile_share', captured_at: new Date().toISOString()
-}}));
+setVariable({reference("request_url")}, JSON.stringify(url).slice(1, -1));
+setVariable({reference("request_title")}, JSON.stringify(title || '').slice(1, -1));
+setVariable({reference("request_text")}, JSON.stringify(text).slice(1, -1));
+setVariable({reference("captured_at")}, new Date().toISOString());
 """.strip()
     variables = []
     for name in (
@@ -68,7 +68,10 @@ setVariable({reference("request_body")}, JSON.stringify({{
         "shared_title",
         "last_share",
         "capture_key",
-        "request_body",
+        "request_url",
+        "request_title",
+        "request_text",
+        "captured_at",
         "api_key",
     ):
         variables.append(
@@ -92,7 +95,17 @@ setVariable({reference("request_body")}, JSON.stringify({{
         "url": api_base.rstrip("/") + "/jobs/capture",
         "requestBodyType": "custom_text",
         "contentType": "application/json",
-        "bodyContent": placeholder("request_body"),
+        # Each placeholder is a JSON string, so the app's pre-execution JSON
+        # check also accepts the unresolved template. Values are escaped above.
+        "bodyContent": json.dumps(
+            {
+                "url": placeholder("request_url"),
+                "page_title": placeholder("request_title"),
+                "shared_text": placeholder("request_text"),
+                "capture_method": "mobile_share",
+                "captured_at": placeholder("captured_at"),
+            }
+        ),
         "headers": [
             {"key": "X-API-Key", "value": placeholder("api_key")},
             {"key": "Idempotency-Key", "value": placeholder("capture_key")},

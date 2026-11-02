@@ -16,6 +16,7 @@ try {
   assert.equal(fs.statSync(output).mode & 0o777, 0o600);
   const shortcut = document.categories[0].shortcuts[0];
   assert.equal(shortcut.url, 'http://127.0.0.1:8000/api/v1/jobs/capture');
+  assert.doesNotThrow(() => JSON.parse(shortcut.bodyContent), 'Unresolved template must pass native preflight');
   const values = new Map(document.variables.map(variable => [variable.id, variable.value]));
   const byName = key => document.variables.find(variable => variable.key === `oscar_${key}`).id;
   const run = (text, title) => {
@@ -24,7 +25,8 @@ try {
     vm.runInNewContext(shortcut.codeOnPrepare, {
       getVariable: id => values.get(id), setVariable: (id, value) => values.set(id, value)
     });
-    return { body: JSON.parse(values.get(byName('request_body'))), key: values.get(byName('capture_key')) };
+    const body = shortcut.bodyContent.replace(/\{\{([^}]+)\}\}/g, (_, id) => values.get(id));
+    return { body: JSON.parse(body), key: values.get(byName('capture_key')) };
   };
   const text = 'Data Engineer "Python"\nhttps://example.com/jobs/1?track=android';
   const first = run(text, 'Data Engineer');
@@ -35,7 +37,7 @@ try {
   assert.match(first.key, /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/);
   assert.equal(run(text, 'Data Engineer').key, first.key, 'Retry must retain the same idempotency key');
   assert.notEqual(run('https://example.com/jobs/2', '').key, first.key);
-  assert.equal(run('https://example.com/jobs/3', 'https://example.com/jobs/3').body.page_title, undefined);
+  assert.equal(run('https://example.com/jobs/3', 'https://example.com/jobs/3').body.page_title, '');
   assert.throws(() => run('no link', ''), /No URL found/);
   assert.throws(() => execFileSync('python3', ['scripts/mobile/create_android_shortcut.py', '--env-file', env,
     '--api-base-url', 'http://192.168.1.2:8000/api/v1', '--output', path.join(temporary, 'unsafe.zip')], { stdio: 'pipe' }));
