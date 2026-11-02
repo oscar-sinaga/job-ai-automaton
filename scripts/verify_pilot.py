@@ -6,6 +6,7 @@ import argparse
 import datetime as dt
 import hashlib
 import json
+import tarfile
 from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
@@ -18,6 +19,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--state", type=Path, required=True)
     parser.add_argument("--verify-state", action="store_true")
+    parser.add_argument("--backup", type=Path)
     args = parser.parse_args()
     values = dict(
         line.split("=", 1)
@@ -37,9 +39,7 @@ def main() -> None:
         with urlopen(request, timeout=30) as response:
             return json.load(response)
 
-    assert call("/health")["env"] == "simulation", (
-        "Refuse to mutate a non-simulation API"
-    )
+    assert call("/health")["env"] == "simulation", "Refuse to mutate a non-simulation API"
     assert call("/health")["db"] == "ok"
     with urlopen("http://127.0.0.1:5173/jobs", timeout=30) as response:
         html = response.read().decode()
@@ -59,9 +59,16 @@ def main() -> None:
         with urlopen(request, timeout=30) as response:
             assert hashlib.sha256(response.read()).hexdigest() == saved["pdf_sha256"]
         assert call(f"/api/v1/cv/{saved['cv_id']}")["is_approved"]
-        print(
-            "PASS: job, approved CV, tracking and identical PDF survive container recreation"
-        )
+        if args.backup:
+            with tarfile.open(args.backup / "pdfs.tar.gz", "r:gz") as archive:
+                hashes = []
+                for member in archive.getmembers():
+                    if member.isfile() and member.name.endswith(".pdf"):
+                        stream = archive.extractfile(member)
+                        assert stream is not None
+                        hashes.append(hashlib.sha256(stream.read()).hexdigest())
+                assert saved["pdf_sha256"] in hashes, "Backup must preserve the exported PDF bytes"
+        print("PASS: job, approved CV, tracking and identical PDF survive container recreation")
         return
 
     job = call(
@@ -81,7 +88,7 @@ def main() -> None:
         f"/api/v1/jobs/{job_id}/snapshots",
         "POST",
         {
-            "raw_text": "Example Data Engineer vacancy. Build Python and SQL data pipelines and reporting.",
+            "raw_text": "Example Data Engineer vacancy. Build Python and SQL data pipelines.",
             "capture_method": "paste_text",
             "captured_at": dt.datetime.now(dt.UTC).isoformat(),
         },

@@ -63,9 +63,7 @@ def backup(compose: list[str], directory: Path, database: str) -> None:
     manifest = {
         "version": 1,
         "created_at": dt.datetime.now(dt.UTC).isoformat(),
-        "files": {
-            name: digest(directory / name) for name in ("database.dump", "pdfs.tar.gz")
-        },
+        "files": {name: digest(directory / name) for name in ("database.dump", "pdfs.tar.gz")},
     }
     (directory / "manifest.json").write_text(json.dumps(manifest, indent=2))
     print(f"Backup complete: {directory}")
@@ -81,9 +79,7 @@ def verify_backup(compose: list[str], directory: Path) -> None:
             raise ValueError(f"Backup checksum failed for {name}")
 
     database = f"oscar_restore_check_{secrets.token_hex(8)}"
-    subprocess.run(
-        [*compose, "exec", "-T", "db", "createdb", "-U", "oscar", database], check=True
-    )
+    subprocess.run([*compose, "exec", "-T", "db", "createdb", "-U", "oscar", database], check=True)
     try:
         with (directory / "database.dump").open("rb") as source:
             subprocess.run(
@@ -144,9 +140,7 @@ def main() -> None:
         choices=["init", "start", "stop", "status", "backup", "verify-backup"],
     )
     parser.add_argument("--simulation", action="store_true")
-    parser.add_argument(
-        "--directory", type=Path, help="Backup output or existing backup directory"
-    )
+    parser.add_argument("--directory", type=Path, help="Backup output or existing backup directory")
     args = parser.parse_args()
     env_file = ROOT / (".env.simulation" if args.simulation else ".env.pilot")
     if env_file.is_symlink():
@@ -188,10 +182,7 @@ def main() -> None:
         subprocess.run([*compose, "ps"], check=True)
     elif args.command == "backup":
         stamp = dt.datetime.now(dt.UTC).strftime("%Y%m%dT%H%M%SZ")
-        directory = (
-            args.directory
-            or ROOT / "backups" / f"{project}-{stamp}-{secrets.token_hex(3)}"
-        )
+        directory = args.directory or ROOT / "backups" / f"{project}-{stamp}-{secrets.token_hex(3)}"
         backup(compose, directory.resolve(), values["OSCAR_DATABASE_NAME"])
     elif args.command == "verify-backup":
         if not args.directory:

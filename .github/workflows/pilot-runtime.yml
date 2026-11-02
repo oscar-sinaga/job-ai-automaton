@@ -27,7 +27,7 @@ jobs:
           python scripts/pilot.py verify-backup --simulation --directory "$RUNNER_TEMP/pilot-backup"
           python scripts/pilot.py stop --simulation
           python scripts/pilot.py start --simulation
-          python scripts/verify_pilot.py --state "$RUNNER_TEMP/pilot-state.json" --verify-state
+          python scripts/verify_pilot.py --state "$RUNNER_TEMP/pilot-state.json" --verify-state --backup "$RUNNER_TEMP/pilot-backup"
       - name: Verify normal mode with no AI credentials
         run: |
           set -euo pipefail
