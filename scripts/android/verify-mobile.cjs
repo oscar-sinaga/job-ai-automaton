@@ -36,6 +36,11 @@ async function main() {
     android: adb('shell', 'getprop', 'ro.build.version.release').trim(),
     sdk: adb('shell', 'getprop', 'ro.build.version.sdk').trim(),
     chrome: adb('shell', 'dumpsys', 'package', 'com.android.chrome').match(/versionName=(\S+)/)?.[1] };
+  report.device.googlePlayServices = adb('shell', 'dumpsys', 'package', 'com.google.android.gms')
+    .match(/versionName=(\S+)/)?.[1] || null;
+  report.device.playStorePresent = adb('shell', 'pm', 'list', 'packages', 'com.android.vending')
+    .includes('package:com.android.vending');
+  adb('logcat', '-c');
   assert(report.device.chrome, 'The Google APIs image must include Chrome');
   adb('shell', 'svc', 'power', 'stayon', 'true');
   // Reduce software-rendering load while retaining a phone-size Android UI.
@@ -51,8 +56,11 @@ async function main() {
   let page;
   const shot = async name => device.screenshot({ path: path.join(output, `${name}.png`) });
   const nativeTree = async name => {
-    adb('shell', 'uiautomator', 'dump', '/sdcard/oscar-window.xml');
-    const xml = adb('shell', 'cat', '/sdcard/oscar-window.xml');
+    const remote = `/data/local/tmp/oscar-${name}.xml`;
+    const dumped = adb('shell', 'uiautomator', 'dump', remote);
+    assert(dumped.includes('UI hierchary dumped') || dumped.includes('UI hierarchy dumped'),
+      'UI Automator must produce a fresh tree');
+    const xml = adb('shell', 'cat', remote);
     fs.writeFileSync(path.join(output, `${name}.xml`), xml);
     return xml;
   };
@@ -230,6 +238,11 @@ async function main() {
     throw error;
   } finally {
     save();
+    try {
+      const lines = adb('logcat', '-d', '-v', 'threadtime').split('\n')
+        .filter(line => /webapk|webapp|finsky|PackageInstaller|PackageManager|chromium.*ERROR/i.test(line));
+      fs.writeFileSync(path.join(output, 'android-install.log'), lines.join('\n'));
+    } catch {}
     try { adb('shell', 'pkill', '-2', 'screenrecord'); } catch {}
     await Promise.race([
       new Promise(resolve => recording.exitCode !== null ? resolve() : recording.once('exit', resolve)),
