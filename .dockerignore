@@ -1,0 +1,16 @@
+.git
+**/node_modules
+**/.venv
+**/.env*
+.env*
+**/__pycache__
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/.svelte-kit
+**/build
+**/dist
+**/test-results
+**/playwright-report
+var
+backups

@@ -1,0 +1,68 @@
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: oscar
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run scripts/pilot.py init first}
+      POSTGRES_DB: ${OSCAR_DATABASE_NAME:?Run scripts/pilot.py init first}
+    volumes:
+      - database:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U oscar -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    environment:
+      OSCAR_ENV: ${OSCAR_ENV:?Run scripts/pilot.py init first}
+      OSCAR_DATABASE_URL: ${OSCAR_DATABASE_URL:?Run scripts/pilot.py init first}
+      OSCAR_API_KEY: ${OSCAR_API_KEY:?Run scripts/pilot.py init first}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OSCAR_STORAGE_DIR: /data/pdfs
+      OSCAR_LOG_DIR: /data/logs
+    ports: ['127.0.0.1:8000:8000']
+    volumes:
+      - documents:/data/pdfs
+      - logs:/data/logs
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, python, -c, 'import json,urllib.request; assert json.load(urllib.request.urlopen("http://127.0.0.1:8000/health"))["db"] == "ok"']
+      interval: 5s
+      timeout: 3s
+      retries: 15
+      start_period: 15s
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    environment:
+      API_BASE_URL: http://api:8000/api/v1
+      API_KEY: ${OSCAR_API_KEY:?Run scripts/pilot.py init first}
+      OSCAR_APP_MODE: ${OSCAR_ENV}
+      ORIGIN: http://127.0.0.1:5173
+      HOST: 0.0.0.0
+      PORT: '5173'
+    ports: ['127.0.0.1:5173:5173']
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, node, -e, 'fetch("http://127.0.0.1:5173/jobs").then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))']
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+volumes:
+  database:
+  documents:
+  logs:

@@ -17,6 +17,20 @@ Start with **[docs/18_FIRST_REAL_USAGE.md](docs/18_FIRST_REAL_USAGE.md)** for th
 first 3–5 applications, then measure M6 against
 [docs/15_ROADMAP_AND_MILESTONES.md](docs/15_ROADMAP_AND_MILESTONES.md).
 
+For a persistent local stack, use **[docs/20_MVP_PILOT.md](docs/20_MVP_PILOT.md)**.
+It runs PostgreSQL, the API and a standalone Node web server with Docker Compose,
+including explicit simulation mode, backup and restore verification. The CI runtime
+check exercises the actual images and verifies data and PDFs after container recreation.
+
+```bash
+python scripts/pilot.py init --simulation
+python scripts/pilot.py start --simulation
+```
+
+Open `http://127.0.0.1:5173`. Simulation uses example data and deterministic CV
+output without AI requests. Omit `--simulation` for the normal local workspace.
+Live model quality and the real-usage targets still require validation.
+
 For testing without an API key, use **[docs/19_OFFLINE_SIMULATION.md](docs/19_OFFLINE_SIMULATION.md)**:
 an isolated simulation server plus desktop/mobile-viewport browser tests. This
 checks the app flow with example facts, not model quality or real applications.
