@@ -170,7 +170,7 @@ async function waitForJobCount(count) {
     await page.goto('http://127.0.0.1:5173/jobs', { waitUntil: 'networkidle' });
     await page.getByRole('link', { name: results.find((r) => r.kind === 'live-page').ref, exact: true }).click();
     await page.getByRole('heading', { name: /Master Data Engineer/ }).waitFor();
-    await page.getByText('Fitch Group', { exact: true }).waitFor();
+    await page.locator('p').filter({ hasText: /^Fitch Group/ }).waitFor();
     screenshot('inbox-metadata.png');
     await wait(2000);
     fs.writeFileSync(path.join(output, 'result.json'), JSON.stringify(results, null, 2));
