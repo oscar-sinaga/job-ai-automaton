@@ -1,0 +1,60 @@
+name: Record OSCAR extension capture
+on:
+  push:
+    branches: [demo/extension-capture-20261102]
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: oscar
+          POSTGRES_PASSWORD: oscar
+          POSTGRES_DB: oscar_simulation_extension
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 3s --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: astral-sh/setup-uv@v5
+      - name: Install dependencies and build extension and web app
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq xvfb xdotool tesseract-ocr ffmpeg xauth
+          (cd apps/api && uv sync --frozen --python 3.12)
+          (cd apps/extension && npm ci && npm run build)
+          (cd apps/web && npm ci && npx playwright install --with-deps chromium && npm run build)
+      - name: Record the Save this job popup and verify the inbox
+        env:
+          API_BASE_URL: http://127.0.0.1:8000/api/v1
+          API_KEY: simulation-only-key
+          DEMO_OUTPUT: ${{ runner.temp }}/oscar-demo
+        run: |
+          set -euo pipefail
+          mkdir -p "$DEMO_OUTPUT"
+          (cd apps/api && exec uv run --no-sync python scripts/serve_simulation.py --database-url postgresql+psycopg://oscar:oscar@127.0.0.1:5432/oscar_simulation_extension --storage-dir "$RUNNER_TEMP/pdf" --port 8000) >"$DEMO_OUTPUT/api.log" 2>&1 &
+          api_pid=$!
+          (cd apps/web && exec npm run preview -- --host 127.0.0.1 --port 5173 --strictPort) >"$DEMO_OUTPUT/web.log" 2>&1 &
+          web_pid=$!
+          trap 'kill "$web_pid" "$api_pid" 2>/dev/null || true' EXIT
+          curl --retry 12 --retry-all-errors --retry-delay 1 -fsS http://127.0.0.1:8000/health | jq -e '.env == "simulation" and .db == "ok"'
+          curl --retry 12 --retry-all-errors --retry-delay 1 -fsS http://127.0.0.1:5173/jobs -o /dev/null
+          xvfb-run -a -s '-screen 0 1280x820x24' node scripts/demo/capture-extension.cjs
+          ffmpeg -loglevel error -i "$DEMO_OUTPUT/record.mkv" -c:v libx264 -crf 19 -pix_fmt yuv420p -movflags +faststart "$DEMO_OUTPUT/OSCAR-Extension-Demo.mp4"
+      - name: Save recording and evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: oscar-extension-demo
+          path: |
+            ${{ runner.temp }}/oscar-demo/*.mp4
+            ${{ runner.temp }}/oscar-demo/*.png
+            ${{ runner.temp }}/oscar-demo/result.json
+            ${{ runner.temp }}/oscar-demo/*.log
+          retention-days: 14
