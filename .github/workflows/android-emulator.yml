@@ -53,7 +53,8 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_6
-          ram-size: 2048M
+          ram-size: 3072M
+          cores: 4
           heap-size: 512M
           disk-size: 4096M
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot-save -camera-back none
