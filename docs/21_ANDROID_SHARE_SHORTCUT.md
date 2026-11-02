@@ -1,7 +1,8 @@
 # Capture dari menu Share Android
 
 Jalur prototipe ADR-020 memakai [HTTP Shortcuts](https://http-shortcuts.rmy.ch/):
-pilih Share pada lowongan, pilih HTTP Shortcuts, lalu **Save to OSCAR**. Aplikasi
+pilih Share pada lowongan, pilih HTTP Shortcuts (label **Send to…** pada beberapa
+versi Android), lalu **Save to OSCAR**. Aplikasi
 menampilkan **Saved as Jxxx** setelah server benar-benar menyimpan lowongan.
 URL/judul saja tetap ditandai parsial; lengkapi deskripsi di OSCAR sebelum membuat CV.
 

@@ -77,13 +77,18 @@ async function main() {
   let page;
   const shot = async name => device.screenshot({ path: path.join(output, `${name}.png`) });
   const nativeTree = async name => {
-    const remote = `/data/local/tmp/oscar-${name}.xml`;
-    const dumped = adb('shell', 'uiautomator', 'dump', remote);
-    assert(dumped.includes('UI hierchary dumped') || dumped.includes('UI hierarchy dumped'),
-      'UI Automator must produce a fresh tree');
-    const xml = adb('shell', 'cat', remote);
-    fs.writeFileSync(path.join(output, `${name}.xml`), xml);
-    return xml;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const remote = `/data/local/tmp/oscar-${name}-${attempt}.xml`;
+      const dumped = adb('shell', 'uiautomator', 'dump', remote);
+      if (!dumped.includes('UI hierchary dumped') && !dumped.includes('UI hierarchy dumped')) {
+        report.accessibility_retries = (report.accessibility_retries || 0) + 1;
+        continue;
+      }
+      const xml = adb('shell', 'cat', remote);
+      fs.writeFileSync(path.join(output, `${name}.xml`), xml);
+      return xml;
+    }
+    throw Error('UI Automator must produce a fresh tree');
   };
   let action = 0;
   const nativeTap = async selector => {
@@ -96,8 +101,10 @@ async function main() {
       tree = await nativeTree(`native-action-${++action}`);
     }
     const nodes = tree.match(/<node\b[^>]*>/g) || [];
-    const matches = nodes.filter(node => Object.entries(selector).every(([key, value]) =>
+    let matches = nodes.filter(node => Object.entries(selector).every(([key, value]) =>
       node.includes(`${key === 'desc' ? 'content-desc' : key}="${value}"`)));
+    const clickable = matches.filter(node => node.includes('clickable="true"'));
+    if (matches.length > 1 && clickable.length === 1) matches = clickable;
     assert.equal(matches.length, 1, `Native control must be unambiguous: ${JSON.stringify(selector)}`);
     const bounds = matches[0].match(/bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"/);
     assert(bounds, 'Native control must have visible bounds');
@@ -303,7 +310,12 @@ async function main() {
       const tree = await nativeTree(`11-shortcut-import-${attempt}`);
       if (tree.includes('text="Save to OSCAR"')) { imported = true; break; }
       if (tree.includes('Importing shortcuts failed')) throw Error('Native shortcut import failed');
-      const label = ['OK', 'Got it', 'Get started', 'Import', "Don't allow"]
+      if (tree.includes('text="OSCAR"')) { await nativeTap({ text: 'OSCAR' }); continue; }
+      if (tree.includes('content-desc="Go back"') && tree.includes('text="Import / Export"')) {
+        await nativeTap({ desc: 'Go back' });
+        continue;
+      }
+      const label = ['OK', 'Got it', 'Get started', "Don't allow"]
         .find(text => tree.includes(`text="${text}"`));
       if (label) await nativeTap({ text: label });
       else if (!tree.includes('Importing…')) adb('shell', 'input', 'keyevent', '4');
@@ -329,9 +341,13 @@ async function main() {
     await page.getByRole('button', { name: 'Share job to OSCAR', exact: true }).tap();
     let chooser = await nativeTree('12-native-shortcut-picker');
     await shot('12-native-shortcut-picker');
-    const nativeLabel = [...chooser.matchAll(/text="([^"]*HTTP[^"\n]*Shortcuts[^"]*)"/g)][0]?.[1];
+    const nativeLabel = [...chooser.matchAll(/text="([^"]*HTTP[^"\n]*Shortcuts[^"]*)"/g)][0]?.[1] ||
+      ['Send to…', 'Send to...'].find(label => chooser.includes(`text="${label}"`));
     assert(nativeLabel, 'HTTP Shortcuts must be present in the actual Android chooser');
     await nativeTap({ text: nativeLabel });
+    const receiverActivity = adb('shell', 'dumpsys', 'activity', 'activities').split('\n')
+      .filter(line => /topResumedActivity|mResumedActivity/.test(line)).join('\n');
+    assert(receiverActivity.includes('ch.rmy.android.http_shortcuts'), 'The selected target must be HTTP Shortcuts');
     chooser = await nativeTree('13-native-shortcut-selected');
     if (chooser.includes('text="Save to OSCAR"')) await nativeTap({ text: 'Save to OSCAR' });
     let nativeJob;
