@@ -1,0 +1,183 @@
+// Runs on an AVD through ADB. It does not use desktop viewport/device emulation.
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const { createRequire } = require('node:module');
+const { execFileSync, spawn } = require('node:child_process');
+const webRequire = createRequire(path.resolve('apps/web/package.json'));
+const { _android: android } = webRequire('playwright');
+const { expect } = webRequire('@playwright/test');
+
+const output = process.env.ANDROID_EVIDENCE;
+assert(output, 'ANDROID_EVIDENCE must name an evidence directory');
+fs.mkdirSync(output, { recursive: true });
+const config = Object.fromEntries(fs.readFileSync('.env.simulation', 'utf8').trim().split('\n').map(line => {
+  const index = line.indexOf('=');
+  return [line.slice(0, index), line.slice(index + 1)];
+}));
+const headers = { 'X-API-Key': config.OSCAR_API_KEY };
+const origin = 'http://127.0.0.1:5173';
+const report = { environment: 'Android AVD, not a physical phone', checks: [],
+  os_share_target: { status: 'not-tested' }, ai: 'simulation; no provider requests' };
+const adb = (...args) => execFileSync('adb', args, { encoding: 'utf8', timeout: 30000 });
+const save = () => fs.writeFileSync(path.join(output, 'result.json'), JSON.stringify(report, null, 2));
+async function api(resource) {
+  const response = await fetch(`http://127.0.0.1:8000${resource}`, { headers });
+  assert.equal(response.status, 200, resource);
+  return response.json();
+}
+async function main() {
+  assert.deepEqual(await api('/health').then(h => ({ env: h.env, db: h.db })), { env: 'simulation', db: 'ok' });
+  adb('reverse', 'tcp:5173', 'tcp:5173');
+  const [device] = await android.devices();
+  assert(device, 'An Android emulator must be connected');
+  device.setDefaultTimeout(15000);
+  report.device = { model: device.model(), serial: device.serial(),
+    android: adb('shell', 'getprop', 'ro.build.version.release').trim(),
+    sdk: adb('shell', 'getprop', 'ro.build.version.sdk').trim(),
+    chrome: adb('shell', 'dumpsys', 'package', 'com.android.chrome').match(/versionName=(\S+)/)?.[1] };
+  assert(report.device.chrome, 'The Google APIs image must include Chrome');
+  adb('shell', 'svc', 'power', 'stayon', 'true');
+  const recording = spawn('adb', ['shell', 'screenrecord', '--time-limit', '180',
+    '--bit-rate', '2500000', '/sdcard/oscar-android.mp4'], { stdio: 'ignore' });
+  let context;
+  let page;
+  const shot = async name => device.screenshot({ path: path.join(output, `${name}.png`) });
+  const nativeTree = async name => {
+    adb('shell', 'uiautomator', 'dump', '/sdcard/oscar-window.xml');
+    const xml = adb('shell', 'cat', '/sdcard/oscar-window.xml');
+    fs.writeFileSync(path.join(output, `${name}.xml`), xml);
+    return xml;
+  };
+  try {
+    context = await device.launchBrowser({ viewport: null });
+    page = await context.newPage();
+    page.setDefaultTimeout(20000);
+    await page.goto(`${origin}/jobs`);
+    await expect(page.getByRole('heading', { name: 'Job Inbox', exact: true })).toBeVisible();
+    report.browser = await page.evaluate(() => ({ userAgent: navigator.userAgent,
+      width: innerWidth, height: innerHeight, touchPoints: navigator.maxTouchPoints,
+      secureContext: isSecureContext }));
+    assert.match(report.browser.userAgent, /Android/);
+    assert(report.browser.touchPoints > 0);
+    assert(report.browser.width < 600, 'Use the Android window, not a desktop viewport');
+    await shot('01-android-inbox');
+
+    const stamp = Date.now();
+    const manualUrl = `https://example.com/jobs/android-manual-${stamp}`;
+    await page.getByLabel('Job URL', { exact: true }).tap();
+    await page.getByLabel('Job URL', { exact: true }).fill(manualUrl);
+    await shot('02-url-and-android-keyboard');
+    await page.getByRole('button', { name: 'Save job', exact: true }).tap();
+    await expect(page.getByText('Saved.', { exact: true })).toBeVisible();
+    const summaries = (await api('/api/v1/jobs')).items;
+    const details = await Promise.all(summaries.map(job => api(`/api/v1/jobs/${job.id}`)));
+    const manual = details.find(job => job.canonical_url === manualUrl);
+    assert(manual, 'Android form submission must reach the database');
+    assert.equal(manual.capture_completeness, 'CAPTURED_PARTIAL');
+    report.checks.push({ name: 'Android Chrome URL capture', status: 'passed', job_id: manual.id });
+
+    // Exercise the receiver with the payload Chrome/other apps normally supply.
+    // Direct navigation proves the receiver, NOT OS registration/dispatch.
+    const sharedUrl = `https://example.com/jobs/android-shared-${stamp}`;
+    const query = new URLSearchParams({ title: 'Android example Data Engineer',
+      text: `Example vacancy shared from Android ${sharedUrl}` });
+    await page.goto(`${origin}/share-target?${query}`);
+    await expect(page.getByRole('heading', { name: /^Saved as J\d+/ })).toBeVisible();
+    await expect(page.getByText(/Only the link was shared/)).toBeVisible();
+    await shot('03-shared-payload-saved');
+    await page.getByRole('link', { name: 'Open job →', exact: true }).tap();
+    await expect(page.getByRole('button', { name: 'Generate CV', exact: true })).toBeDisabled();
+    const sharedId = Number(new URL(page.url()).pathname.split('/').pop());
+    const shared = await api(`/api/v1/jobs/${sharedId}`);
+    assert.equal(shared.capture_completeness, 'CAPTURED_PARTIAL');
+    assert.equal(shared.canonical_url, sharedUrl);
+    assert.equal(shared.snapshots[0].capture_method, 'mobile_share');
+    const description = 'Example Android test vacancy for a Data Engineer. Build Python and SQL pipelines, validate source data, document transformations, and collaborate with analysts on reliable reporting.';
+    await page.getByPlaceholder('Paste the full job description here…').fill(description);
+    await page.getByRole('button', { name: 'Save description', exact: true }).tap();
+    await expect(page.locator('pre')).toHaveText(description);
+    assert.equal((await api(`/api/v1/jobs/${sharedId}`)).capture_completeness, 'CAPTURED_COMPLETE');
+    await shot('04-description-completed');
+    report.checks.push({ name: 'Shared-text receiver and enrichment on Android',
+      status: 'passed', job_id: sharedId, dispatch: 'direct receiver URL, not OS share' });
+
+    await page.goto(`${origin}/share-target?text=no-link-here`);
+    await expect(page.getByRole('heading', { name: "Couldn't save this job", exact: true })).toBeVisible();
+    await expect(page.getByText('No URL was found in the shared content.', { exact: true })).toBeVisible();
+    await shot('05-explicit-capture-error');
+    await page.getByRole('link', { name: '← Job Inbox', exact: true }).tap();
+    await expect(page.getByRole('heading', { name: 'Job Inbox', exact: true })).toBeVisible();
+    report.checks.push({ name: 'Invalid share payload gives a recoverable error', status: 'passed' });
+
+    const cdp = await context.newCDPSession(page);
+    await cdp.send('Page.enable');
+    report.installability = await cdp.send('Page.getInstallabilityErrors');
+    await device.tap({ desc: 'More options' });
+    let tree = await nativeTree('06-chrome-menu');
+    const installLabel = [...tree.matchAll(/text="([^"]+)"/g)].map(match => match[1])
+      .find(text => /^(Add to Home screen|Install app)$/.test(text));
+    if (installLabel) {
+      await device.tap({ text: installLabel });
+      tree = await nativeTree('07-install-prompt');
+      await shot('07-install-prompt');
+      // Installing into the disposable AVD is part of this test. A shortcut
+      // alone does not establish WebAPK share registration.
+      for (const label of ['Install', 'Add', 'Create shortcut']) {
+        if (tree.includes(`text="${label}"`)) {
+          await device.tap({ text: label });
+          break;
+        }
+      }
+      await nativeTree('08-after-install-attempt');
+    } else {
+      adb('shell', 'input', 'keyevent', '4');
+    }
+    report.webapkPackages = adb('shell', 'pm', 'list', 'packages')
+      .split('\n').filter(line => line.includes('webapk'));
+
+    // A native Android ACTION_SEND resolver, without posting to any recipient.
+    // Always record OS dispatch separately from the direct receiver check.
+    await page.bringToFront();
+    await page.goto(`${origin}/jobs`);
+    await page.evaluate(() => {
+      const button = document.createElement('button');
+      button.textContent = 'Android OS share test';
+      button.style.cssText = 'position:fixed;top:100px;left:10px;z-index:99999;background:white;padding:20px';
+      button.onclick = () => navigator.share({ title: 'Example Android vacancy',
+        text: 'Synthetic test vacancy', url: 'https://example.com/jobs/android-os-share' }).catch(() => {});
+      document.body.append(button);
+    });
+    await page.getByRole('button', { name: 'Android OS share test', exact: true }).tap();
+    await shot('09-native-android-share-picker');
+    const shareTree = await nativeTree('09-native-android-share-picker');
+    const androidResolverVisible = /com\.android\.intentresolver|android:id\/resolver|android:id\/contentPanel|Share with|Sharing link|No apps can perform/.test(shareTree);
+    assert(androidResolverVisible, 'A native Android share dialog must actually open');
+    const oscarVisible = /text="[^"]*OSCAR/.test(shareTree);
+    report.os_share_target = { status: oscarVisible ? 'available-not-dispatched' : 'blocked',
+      native_picker_opened: true, oscar_visible: oscarVisible,
+      note: oscarVisible ? 'Target visible; capture from the OS still needs verification.' :
+        'OSCAR is absent from this AVD share picker. Direct receiver tests do not prove installed-PWA dispatch. Localhost/WebAPK installation must be evaluated separately.' };
+    adb('shell', 'input', 'keyevent', '4');
+    report.status = 'browser-checks-passed; see separate OS-share status';
+  } catch (error) {
+    report.status = 'failed';
+    report.failure = String(error);
+    await shot('failure').catch(() => {});
+    await nativeTree('failure').catch(() => {});
+    throw error;
+  } finally {
+    save();
+    try { adb('shell', 'pkill', '-2', 'screenrecord'); } catch {}
+    await Promise.race([
+      new Promise(resolve => recording.exitCode !== null ? resolve() : recording.once('exit', resolve)),
+      new Promise(resolve => { const timer = setTimeout(resolve, 10000); timer.unref(); })
+    ]);
+    if (recording.exitCode === null) recording.kill();
+    try { adb('pull', '/sdcard/oscar-android.mp4', path.join(output, 'OSCAR-Android-Emulator.mp4')); } catch {}
+    await context?.close().catch(() => {});
+    await device.close().catch(() => {});
+  }
+  console.log(JSON.stringify(report, null, 2));
+}
+main().catch(error => { save(); console.error(error); process.exitCode = 1; });
