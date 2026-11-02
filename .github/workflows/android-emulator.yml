@@ -4,6 +4,7 @@ on:
     paths:
       - '.github/workflows/android-emulator.yml'
       - 'scripts/android/**'
+      - 'scripts/mobile/**'
   workflow_dispatch:
 permissions:
   contents: read
@@ -25,9 +26,18 @@ jobs:
       - name: Install test dependencies and start isolated application
         run: |
           cd apps/web && npm ci && cd ../..
+          node scripts/mobile/test-shortcut.cjs
           python scripts/pilot.py init --simulation
           python scripts/pilot.py start --simulation
           mkdir -p "$RUNNER_TEMP/android-evidence"
+          curl -fL --retry 3 https://github.com/Waboodoo/HTTP-Shortcuts/releases/download/v4.9.0/app-x86_64-release.apk -o "$RUNNER_TEMP/http-shortcuts.apk"
+          python - <<'PY'
+          import hashlib, os
+          from pathlib import Path
+          digest = hashlib.sha256((Path(os.environ['RUNNER_TEMP']) / 'http-shortcuts.apk').read_bytes()).hexdigest()
+          assert digest == 'd369b98a07f1d20cc5494d5d4300d208ff99efa4e571780b61a69dde6368ca3a'
+          print('Verified official HTTP Shortcuts 4.9.0 APK')
+          PY
       - name: Enable emulator acceleration
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -37,6 +47,7 @@ jobs:
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
         env:
           ANDROID_EVIDENCE: ${{ runner.temp }}/android-evidence
+          ANDROID_HTTP_SHORTCUTS_APK: ${{ runner.temp }}/http-shortcuts.apk
         with:
           api-level: 35
           target: google_apis

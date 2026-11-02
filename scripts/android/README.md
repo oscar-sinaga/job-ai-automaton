@@ -30,3 +30,10 @@ The mobile payload includes a link in `text`, as Android share sources commonly
 do. Completeness must count description content rather than the URL and repeated
 page title. API regressions also verify that the original shared text remains
 unchanged in the saved snapshot.
+
+The same AVD also installs the official HTTP Shortcuts 4.9.0 x86_64 APK after
+checking its release SHA-256. ADR-020's native share-to-HTTP prototype is tested
+separately from PWA registration. Its private import is served only on loopback
+and removed after the test; it is never placed in the evidence artifact. The
+native path must actually save a mobile-share job and show its reference on the
+Android success screen. A separate screen recording covers that native path.

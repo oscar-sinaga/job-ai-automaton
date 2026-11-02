@@ -43,8 +43,8 @@ jobs:
         with:
           version: "0.9.10"
       - run: uv sync
-      - run: uv run ruff check . ../../scripts/pilot.py ../../scripts/verify_pilot.py
-      - run: uv run ruff format --check . ../../scripts/pilot.py ../../scripts/verify_pilot.py
+      - run: uv run ruff check . ../../scripts/pilot.py ../../scripts/verify_pilot.py ../../scripts/mobile/create_android_shortcut.py
+      - run: uv run ruff format --check . ../../scripts/pilot.py ../../scripts/verify_pilot.py ../../scripts/mobile/create_android_shortcut.py
       - run: uv run mypy src
         # lint-imports has no contracts until M1 (see pyproject.toml) — runs
         # harmlessly once modules/ exists; not invoked yet to avoid a no-op step.

@@ -1,6 +1,7 @@
 // Runs on an AVD through ADB. It does not use desktop viewport/device emulation.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const { createRequire } = require('node:module');
 const { execFileSync, spawn } = require('node:child_process');
@@ -47,11 +48,28 @@ async function main() {
   adb('shell', 'wm', 'size', '720x1600');
   adb('shell', 'wm', 'density', '280');
   report.device.display = '720x1600, density 280';
-  const recordingLog = fs.openSync(path.join(output, 'screenrecord.log'), 'w');
-  const recording = spawn('adb', ['shell', 'screenrecord', '--time-limit', '180',
-    '--size', '540x1200', '--bit-rate', '2500000', '/data/local/tmp/oscar-android.mp4'],
-    { stdio: ['ignore', recordingLog, recordingLog] });
-  fs.closeSync(recordingLog);
+  const startRecording = remote => {
+    const log = fs.openSync(path.join(output, 'screenrecord.log'), 'a');
+    const child = spawn('adb', ['shell', 'screenrecord', '--time-limit', '180',
+      '--size', '540x1200', '--bit-rate', '2500000', remote], { stdio: ['ignore', log, log] });
+    fs.closeSync(log);
+    return child;
+  };
+  const finishRecording = async (child, remote, filename) => {
+    try { adb('shell', 'pkill', '-2', 'screenrecord'); } catch {}
+    await Promise.race([
+      new Promise(resolve => child.exitCode !== null ? resolve() : child.once('exit', resolve)),
+      new Promise(resolve => { const timer = setTimeout(resolve, 10000); timer.unref(); })
+    ]);
+    if (child.exitCode === null) child.kill();
+    try { adb('pull', remote, path.join(output, filename)); } catch {}
+    return fs.existsSync(path.join(output, filename));
+  };
+  let recordingRemote = '/data/local/tmp/oscar-android.mp4';
+  let recordingFilename = 'OSCAR-Android-Emulator.mp4';
+  let recording = startRecording(recordingRemote);
+  let shortcutServer;
+  let shortcutDirectory;
   let context;
   let page;
   const shot = async name => device.screenshot({ path: path.join(output, `${name}.png`) });
@@ -237,7 +255,82 @@ async function main() {
     } else {
       adb('shell', 'input', 'keyevent', '4');
     }
-    report.status = 'browser-checks-passed; see separate OS-share status';
+    report.browser_recording_saved = await finishRecording(recording, recordingRemote, recordingFilename);
+    recordingRemote = '/data/local/tmp/oscar-native-shortcut.mp4';
+    recordingFilename = 'OSCAR-Android-Native-Share.mp4';
+    recording = startRecording(recordingRemote);
+
+    // ADR-020's approved prototype: a native share-to-HTTP shortcut, independent
+    // of whether the browser can mint a WebAPK in this test image.
+    const shortcutApk = process.env.ANDROID_HTTP_SHORTCUTS_APK;
+    assert(shortcutApk && fs.existsSync(shortcutApk), 'Pinned HTTP Shortcuts APK is required');
+    adb('install', '-r', shortcutApk);
+    adb('reverse', 'tcp:8000', 'tcp:8000');
+    adb('reverse', 'tcp:5180', 'tcp:5180');
+    shortcutDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'oscar-android-import-'));
+    execFileSync('python3', ['scripts/mobile/create_android_shortcut.py', '--env-file', '.env.simulation',
+      '--api-base-url', 'http://127.0.0.1:8000/api/v1', '--output', path.join(shortcutDirectory, 'capture.oscar-shortcut.zip')]);
+    shortcutServer = spawn('python3', ['-m', 'http.server', '5180', '--bind', '127.0.0.1',
+      '--directory', shortcutDirectory], { stdio: 'ignore' });
+    await expect.poll(async () => {
+      try { return (await fetch('http://127.0.0.1:5180/capture.oscar-shortcut.zip')).status; }
+      catch { return 0; }
+    }).toBe(200);
+    const importUrl = 'https://http-shortcuts.rmy.ch/import?url=' +
+      encodeURIComponent('http://127.0.0.1:5180/capture.oscar-shortcut.zip');
+    adb('shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-d', importUrl,
+      '-p', 'ch.rmy.android.http_shortcuts');
+    let imported = false;
+    for (let attempt = 0; attempt < 8; attempt++) {
+      const tree = await nativeTree(`11-shortcut-import-${attempt}`);
+      if (tree.includes('text="Save to OSCAR"')) { imported = true; break; }
+      if (tree.includes('Importing shortcuts failed')) throw Error('Native shortcut import failed');
+      const label = ['OK', 'Got it', 'Get started', 'Import', "Don't allow"]
+        .find(text => tree.includes(`text="${text}"`));
+      if (label) await nativeTap({ text: label });
+      else if (!tree.includes('Importing…')) adb('shell', 'input', 'keyevent', '4');
+    }
+    assert(imported, 'The native app must show the imported Save to OSCAR shortcut');
+    await shot('11-native-shortcut-imported');
+    shortcutServer.kill();
+    shortcutServer = null;
+
+    adb('shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-d', `${origin}/jobs`, '-p', 'com.android.chrome');
+    await page.bringToFront();
+    await page.goto(`${origin}/jobs`);
+    const nativeUrl = `https://example.com/jobs/android-native-shortcut-${stamp}`;
+    await page.evaluate(url => {
+      const button = document.createElement('button');
+      button.textContent = 'Share job to OSCAR';
+      button.style.cssText = 'position:fixed;top:100px;left:10px;z-index:99999;background:white;padding:20px';
+      button.onclick = () => navigator.share({ title: 'Example native Android vacancy',
+        text: 'Synthetic test vacancy', url }).catch(() => {});
+      document.body.append(button);
+    }, nativeUrl);
+    await page.getByRole('button', { name: 'Share job to OSCAR', exact: true }).tap();
+    let chooser = await nativeTree('12-native-shortcut-picker');
+    await shot('12-native-shortcut-picker');
+    const nativeLabel = [...chooser.matchAll(/text="([^"]*HTTP[^"\n]*Shortcuts[^"]*)"/g)][0]?.[1];
+    assert(nativeLabel, 'HTTP Shortcuts must be present in the actual Android chooser');
+    await nativeTap({ text: nativeLabel });
+    chooser = await nativeTree('13-native-shortcut-selected');
+    if (chooser.includes('text="Save to OSCAR"')) await nativeTap({ text: 'Save to OSCAR' });
+    let nativeJob;
+    await expect.poll(async () => {
+      const jobs = (await api('/api/v1/jobs')).items;
+      const details = await Promise.all(jobs.map(job => api(`/api/v1/jobs/${job.id}`)));
+      nativeJob = details.find(job => job.canonical_url === nativeUrl);
+      return !!nativeJob;
+    }, { timeout: 30000 }).toBeTruthy();
+    assert.equal(nativeJob.capture_completeness, 'CAPTURED_PARTIAL');
+    assert.equal(nativeJob.snapshots[0].capture_method, 'mobile_share');
+    const successTree = await nativeTree('14-native-shortcut-job-saved');
+    assert(successTree.includes(`Saved as ${nativeJob.ref}`));
+    await shot('14-native-shortcut-job-saved');
+    report.native_shortcut = { status: 'passed', app: 'HTTP Shortcuts 4.9.0',
+      job_id: nativeJob.id, ref: nativeJob.ref,
+      path: 'Android chooser → HTTP Shortcuts → OSCAR capture API', physical_phone: false };
+    report.status = 'Android browser and native shortcut passed; PWA dispatch reported separately';
   } catch (error) {
     report.status = 'failed';
     report.failure = String(error);
@@ -251,14 +344,9 @@ async function main() {
         .filter(line => /webapk|webapp|finsky|PackageInstaller|PackageManager|chromium.*ERROR/i.test(line));
       fs.writeFileSync(path.join(output, 'android-install.log'), lines.join('\n'));
     } catch {}
-    try { adb('shell', 'pkill', '-2', 'screenrecord'); } catch {}
-    await Promise.race([
-      new Promise(resolve => recording.exitCode !== null ? resolve() : recording.once('exit', resolve)),
-      new Promise(resolve => { const timer = setTimeout(resolve, 10000); timer.unref(); })
-    ]);
-    if (recording.exitCode === null) recording.kill();
-    try { adb('pull', '/data/local/tmp/oscar-android.mp4', path.join(output, 'OSCAR-Android-Emulator.mp4')); } catch {}
-    report.recording_saved = fs.existsSync(path.join(output, 'OSCAR-Android-Emulator.mp4'));
+    report.recording_saved = await finishRecording(recording, recordingRemote, recordingFilename);
+    shortcutServer?.kill();
+    if (shortcutDirectory) fs.rmSync(shortcutDirectory, { recursive: true, force: true });
     save();
     await context?.close().catch(() => {});
     await device.close().catch(() => {});

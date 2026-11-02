@@ -69,6 +69,10 @@ lowongan publik Fitch dan capture LinkedIn sudah diverifikasi pada sesi sebelumn
 
 ## Profil, CV, dan lamaran pertama
 
+Untuk prototipe Share Android melalui HTTP Shortcuts, lihat
+[21_ANDROID_SHARE_SHORTCUT.md](21_ANDROID_SHARE_SHORTCUT.md). Penerimaan PWA dan
+penerimaan melalui aplikasi shortcut diuji dan dilaporkan secara terpisah.
+
 Ikuti [18_FIRST_REAL_USAGE.md](18_FIRST_REAL_USAGE.md). Isi fakta karier secara
 akurat, review setiap versi CV, approve, lalu export dan periksa PDF sebelum
 dipakai. Lamaran dikirim secara manual dan versi CV yang dikirim dicatat di OSCAR.
