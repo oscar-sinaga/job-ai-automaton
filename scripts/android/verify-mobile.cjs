@@ -20,14 +20,17 @@ const headers = { 'X-API-Key': config.OSCAR_API_KEY };
 const origin = 'http://127.0.0.1:5173';
 const report = { environment: 'Android AVD, not a physical phone', checks: [],
   os_share_target: { status: 'not-tested' }, ai: 'simulation; no provider requests' };
-const adb = (...args) => execFileSync('adb', args, { encoding: 'utf8', timeout: 30000 });
+const adb = (...args) => execFileSync('adb', args,
+  { encoding: 'utf8', timeout: 30000, maxBuffer: 16 * 1024 * 1024 });
 const save = () => fs.writeFileSync(path.join(output, 'result.json'), JSON.stringify(report, null, 2));
+const progress = stage => { report.stage = stage; save(); console.log(`Android: ${stage}`); };
 async function api(resource) {
   const response = await fetch(`http://127.0.0.1:8000${resource}`, { headers });
   assert.equal(response.status, 200, resource);
   return response.json();
 }
 async function main() {
+  progress('simulation-health');
   assert.deepEqual(await api('/health').then(h => ({ env: h.env, db: h.db })), { env: 'simulation', db: 'ok' });
   adb('reverse', 'tcp:5173', 'tcp:5173');
   const [device] = await android.devices();
@@ -98,6 +101,7 @@ async function main() {
       String(Math.round((top + bottom) / 2)));
   };
   try {
+    progress('android-browser');
     context = await device.launchBrowser({ viewport: null, hasTouch: true });
     page = await context.newPage();
     page.setDefaultTimeout(20000);
@@ -172,6 +176,7 @@ async function main() {
     await expect(page.getByRole('heading', { name: 'Job Inbox', exact: true })).toBeVisible();
     report.checks.push({ name: 'Invalid share payload gives a recoverable error', status: 'passed' });
 
+    progress('pwa-install-and-share-probe');
     const cdp = await context.newCDPSession(page);
     await cdp.send('Page.enable');
     report.installability = await cdp.send('Page.getInstallabilityErrors');
@@ -262,6 +267,7 @@ async function main() {
 
     // ADR-020's approved prototype: a native share-to-HTTP shortcut, independent
     // of whether the browser can mint a WebAPK in this test image.
+    progress('native-shortcut-import');
     const shortcutApk = process.env.ANDROID_HTTP_SHORTCUTS_APK;
     assert(shortcutApk && fs.existsSync(shortcutApk), 'Pinned HTTP Shortcuts APK is required');
     adb('install', '-r', shortcutApk);
@@ -295,6 +301,7 @@ async function main() {
     shortcutServer.kill();
     shortcutServer = null;
 
+    progress('native-shortcut-share');
     adb('shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-d', `${origin}/jobs`, '-p', 'com.android.chrome');
     await page.bringToFront();
     await page.goto(`${origin}/jobs`);
@@ -354,4 +361,10 @@ async function main() {
   assert(report.recording_saved, 'The Android recording must be preserved');
   console.log(JSON.stringify(report, null, 2));
 }
-main().catch(error => { save(); console.error(error); process.exitCode = 1; });
+main().catch(error => {
+  report.status = 'failed';
+  report.failure = String(error);
+  save();
+  console.error(error.stack || String(error));
+  process.exit(1);
+});
