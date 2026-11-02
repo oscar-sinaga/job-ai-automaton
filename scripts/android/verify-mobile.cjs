@@ -166,6 +166,9 @@ async function main() {
         }
       }
       await nativeTree('08-after-install-attempt');
+      // WebAPK installation is asynchronous. A shortcut is not sufficient.
+      await expect.poll(() => adb('shell', 'pm', 'list', 'packages').includes('webapk'),
+        { timeout: 30000 }).toBeTruthy().catch(() => {});
     } else {
       adb('shell', 'input', 'keyevent', '4');
     }
@@ -176,25 +179,48 @@ async function main() {
     // Always record OS dispatch separately from the direct receiver check.
     await page.bringToFront();
     await page.goto(`${origin}/jobs`);
-    await page.evaluate(() => {
+    const osShareUrl = `https://example.com/jobs/android-os-share-${stamp}`;
+    await page.evaluate(url => {
       const button = document.createElement('button');
       button.textContent = 'Android OS share test';
       button.style.cssText = 'position:fixed;top:100px;left:10px;z-index:99999;background:white;padding:20px';
       button.onclick = () => navigator.share({ title: 'Example Android vacancy',
-        text: 'Synthetic test vacancy', url: 'https://example.com/jobs/android-os-share' }).catch(() => {});
+        text: 'Synthetic test vacancy', url }).catch(() => {});
       document.body.append(button);
-    });
+    }, osShareUrl);
     await page.getByRole('button', { name: 'Android OS share test', exact: true }).tap();
     await shot('09-native-android-share-picker');
     const shareTree = await nativeTree('09-native-android-share-picker');
-    const androidResolverVisible = /com\.android\.intentresolver|android:id\/resolver|android:id\/contentPanel|Share with|Sharing link|No apps can perform/.test(shareTree);
+    report.shareActivity = adb('shell', 'dumpsys', 'activity', 'activities').split('\n')
+      .filter(line => /topResumedActivity|mResumedActivity/.test(line)).join('\n');
+    const androidResolverVisible = /ChooserActivity|ResolverActivity/.test(report.shareActivity);
     assert(androidResolverVisible, 'A native Android share dialog must actually open');
     const oscarVisible = /text="[^"]*OSCAR/.test(shareTree);
     report.os_share_target = { status: oscarVisible ? 'available-not-dispatched' : 'blocked',
       native_picker_opened: true, oscar_visible: oscarVisible,
       note: oscarVisible ? 'Target visible; capture from the OS still needs verification.' :
         'OSCAR is absent from this AVD share picker. Direct receiver tests do not prove installed-PWA dispatch. Localhost/WebAPK installation must be evaluated separately.' };
-    adb('shell', 'input', 'keyevent', '4');
+    if (oscarVisible) {
+      const label = [...shareTree.matchAll(/text="([^"]*OSCAR[^"]*)"/g)][0][1];
+      await nativeTap({ text: label });
+      let captured;
+      await expect.poll(async () => {
+        const jobs = (await api('/api/v1/jobs')).items;
+        const details = await Promise.all(jobs.map(job => api(`/api/v1/jobs/${job.id}`)));
+        captured = details.find(job => job.canonical_url === osShareUrl);
+        return !!captured;
+      }, { timeout: 30000 }).toBeTruthy();
+      assert.equal(captured.capture_completeness, 'CAPTURED_PARTIAL');
+      assert.equal(captured.snapshots[0].capture_method, 'mobile_share');
+      await shot('10-native-share-saved-in-oscar');
+      const receiverTree = await nativeTree('10-native-share-saved-in-oscar');
+      assert(receiverTree.includes(`Saved as ${captured.ref}`));
+      report.os_share_target = { status: 'passed', native_picker_opened: true,
+        oscar_visible: true, job_id: captured.id, ref: captured.ref,
+        note: 'Android chooser selected OSCAR and the real receiver saved a partial job.' };
+    } else {
+      adb('shell', 'input', 'keyevent', '4');
+    }
     report.status = 'browser-checks-passed; see separate OS-share status';
   } catch (error) {
     report.status = 'failed';
