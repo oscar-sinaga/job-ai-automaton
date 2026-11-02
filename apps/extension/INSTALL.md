@@ -1,4 +1,4 @@
-# OSCAR Job Copilot 0.1.1
+# OSCAR Job Copilot 0.1.2
 
 ## Pasang di Chrome atau Edge
 

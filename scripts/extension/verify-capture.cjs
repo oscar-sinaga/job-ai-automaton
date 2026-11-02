@@ -82,6 +82,8 @@ async function waitForJobCount(count) {
         html: '<script type="application/ld+json">{"@graph":[{"@type":["JobPosting"],"title":"AI Engineer","hiringOrganization":{"name":"Fixture Labs"}}]}</script><h1>Unrelated heading</h1>' },
       { name: 'invalid-json-microdata', title: 'Data Analyst', company: 'Fixture Analytics',
         html: '<script type="application/ld+json">invalid</script><main itemscope itemtype="https://schema.org/JobPosting"><span itemprop="title">Data Analyst</span><div itemprop="hiringOrganization" itemscope><span itemprop="name">Fixture Analytics</span></div></main>' },
+      { name: 'linkedin-public-company', title: 'Data Engineer', company: 'Fixture Employer',
+        html: '<main><h1>Data Engineer</h1><a class="topcard__org-name-link">Fixture Employer</a></main>' },
       { name: 'plain-heading', title: 'Platform Engineer', company: null,
         html: '<main><h1>Platform Engineer</h1></main>' }
     ];
