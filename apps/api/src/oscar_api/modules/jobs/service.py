@@ -17,7 +17,7 @@ from urllib.parse import urlparse
 from sqlalchemy import column, exists, func, select, table
 from sqlalchemy.orm import Session
 
-from oscar_api.core.errors import IllegalTransitionError, NotFoundError
+from oscar_api.core.errors import IllegalTransitionError, NotFoundError, ValidationFailedError
 from oscar_api.core.models import SINGLE_USER_ID
 from oscar_api.modules.jobs.dedupe import canonicalize_url, compute_dedupe_key
 from oscar_api.modules.jobs.models import (
@@ -47,7 +47,45 @@ def _slug(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", value.strip().lower()).strip("-")
 
 
+def _is_verification_text(title: str | None, text: str | None) -> bool:
+    if re.fullmatch(
+        r"(just a moment[.!…]*|attention required.*cloudflare[.!…]*|security verification[.!…]*)",
+        (title or "").strip(),
+        re.IGNORECASE,
+    ):
+        return True
+    body = (text or "").casefold()
+    return (
+        len(body) < 4000
+        and "cloudflare" in body
+        and ("performance and security by cloudflare" in body or "ray id" in body)
+        and any(
+            phrase in body
+            for phrase in (
+                "performing security verification",
+                "verify you are human",
+                "checking your browser",
+            )
+        )
+    )
+
+
+def _blocked_page(envelope: CaptureEnvelope) -> bool:
+    access = envelope.metadata.get("page_access")
+    blocked = isinstance(access, str) and access in {
+        "challenge",
+        "login_required",
+        "restricted",
+    }
+    return blocked or any(
+        _is_verification_text(envelope.page_title, text)
+        for text in (envelope.raw_text, envelope.selected_text, envelope.shared_text)
+    )
+
+
 def _effective_text(envelope: CaptureEnvelope) -> str | None:
+    if _blocked_page(envelope):
+        return None
     for candidate in (envelope.raw_text, envelope.selected_text, envelope.shared_text):
         if candidate and candidate.strip():
             return candidate
@@ -64,6 +102,8 @@ def _capped_text(text: str | None) -> tuple[str | None, bool]:
 
 def derive_capture_completeness(envelope: CaptureEnvelope) -> CaptureCompleteness:
     """Server-derived, never trusted from the client (ADR-012, docs/05 §3)."""
+    if _blocked_page(envelope):
+        return CaptureCompleteness.NEEDS_ENRICHMENT
     text = _effective_text(envelope)
     if text and len(text.strip()) >= MIN_COMPLETE_TEXT_CHARS:
         return CaptureCompleteness.CAPTURED_COMPLETE
@@ -128,7 +168,8 @@ def capture_job(
         .first()
     )
     source = resolve_source(session, envelope.source_hint, envelope.url)
-    company_name = (envelope.company_name or "").strip()
+    blocked = _blocked_page(envelope)
+    company_name = "" if blocked else (envelope.company_name or "").strip()
     company = resolve_company(session, company_name) if _slug(company_name) else None
 
     job = Job(
@@ -138,7 +179,7 @@ def capture_job(
         company_id=company.id if company else None,
         url=envelope.url,
         canonical_url=canonical,
-        title=(envelope.job_title or "").strip() or envelope.page_title,
+        title=None if blocked else (envelope.job_title or "").strip() or envelope.page_title,
         capture_completeness=completeness,
         current_status=JobStatus.SAVED,
         dedupe_key=dedupe_key,
@@ -151,6 +192,8 @@ def capture_job(
 
     raw_text, truncated = _capped_text(_effective_text(envelope))
     raw_metadata: dict[str, object] = dict(envelope.metadata)
+    if blocked:
+        raw_metadata["description_omitted"] = True
     if truncated:
         raw_metadata["truncated"] = True
 
@@ -184,6 +227,10 @@ def add_snapshot(
     session: Session, job_id: int, enrichment: SnapshotEnrichment
 ) -> tuple[JobRawSnapshot, CaptureCompleteness]:
     job = get_job_or_404(session, job_id)
+    if _is_verification_text(None, enrichment.raw_text):
+        raise ValidationFailedError(
+            "Paste the job description, not the browser verification message."
+        )
     raw_text, truncated = _capped_text(enrichment.raw_text)
 
     snapshot = JobRawSnapshot(
@@ -196,7 +243,11 @@ def add_snapshot(
     )
     session.add(snapshot)
 
-    if raw_text and job.capture_completeness != CaptureCompleteness.CAPTURED_COMPLETE:
+    if (
+        raw_text
+        and len(raw_text.strip()) >= MIN_COMPLETE_TEXT_CHARS
+        and job.capture_completeness != CaptureCompleteness.CAPTURED_COMPLETE
+    ):
         job.capture_completeness = CaptureCompleteness.CAPTURED_COMPLETE
         session.add(
             JobEvent(

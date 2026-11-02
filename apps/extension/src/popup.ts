@@ -20,6 +20,10 @@ saveButton.addEventListener('click', () => {
 		}
 
 		const dup = response.isDuplicate ? ' — possible duplicate' : '';
+		if (response.captureCompleteness === 'NEEDS_ENRICHMENT') {
+			statusEl.textContent = `URL saved as ${response.ref}${dup}. Open this job in OSCAR Job Inbox and paste the full job description.`;
+			return;
+		}
 		statusEl.textContent = `Saved as ${response.ref} (${response.captureCompleteness})${dup}`;
 	});
 });

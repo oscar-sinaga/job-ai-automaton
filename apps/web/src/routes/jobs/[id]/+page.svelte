@@ -76,7 +76,8 @@
 				Job description not saved yet ({data.job.capture_completeness.replace('_', ' ')})
 			</h2>
 			<p class="mt-1 text-xs text-amber-800">
-				Common when captured from mobile share. Paste the full description below to enrich it.
+				The link is saved. If the original page asks you to sign in or verify your browser,
+				open it normally, then paste the full job description below to continue.
 			</p>
 			<form method="post" action="?/enrich" use:enhance class="mt-3 space-y-2">
 				<textarea

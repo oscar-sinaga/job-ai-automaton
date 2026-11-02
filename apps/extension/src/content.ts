@@ -11,6 +11,7 @@
 
 import type { ExtractionResult, ExtractorUsed } from './types';
 import { extractJobMetadata } from './job-metadata';
+import { detectPageAccess } from './page-access';
 
 const MIN_COMPLETE_LENGTH = 400; // mirrors the server's own floor (docs/05 §3)
 const MAX_CHARS = 200_000; // docs/05 §3: capped, never rejected
@@ -76,6 +77,9 @@ export function extractGenericJobText(): ExtractionResult {
 }
 
 (function run() {
-	const result = { ...extractGenericJobText(), ...extractJobMetadata() };
+	const pageAccess = detectPageAccess();
+	const result: ExtractionResult = pageAccess
+		? { text: '', extractor: 'none', truncated: false, pageAccess }
+		: { ...extractGenericJobText(), ...extractJobMetadata() };
 	chrome.runtime.sendMessage({ type: 'EXTRACTION_RESULT', payload: result });
 })();
