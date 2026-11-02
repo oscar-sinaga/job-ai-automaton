@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test';
 
 test('blocked page URL can be completed by pasting its actual description', async ({ page, request }) => {
-	const api = 'http://127.0.0.1:8001';
-	const headers = { 'X-API-Key': 'simulation-only-key' };
+	const api = process.env.SIMULATION_API_ORIGIN ?? 'http://127.0.0.1:8001';
+	const headers = { 'X-API-Key': process.env.SIMULATION_API_KEY ?? 'simulation-only-key' };
 	const health = await request.get(`${api}/health`);
 	expect(await health.json()).toMatchObject({ env: 'simulation', db: 'ok' });
 	const captured = await request.post(`${api}/api/v1/jobs/capture`, {

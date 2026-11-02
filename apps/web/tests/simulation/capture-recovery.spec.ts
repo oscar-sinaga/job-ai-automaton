@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/test';
 
 test('hiding and reopening a job description preserves the draft', async ({ page, request }) => {
-	const headers = { 'X-API-Key': 'simulation-only-key' };
-	const health = await request.get('http://127.0.0.1:8001/health');
+	const api = process.env.SIMULATION_API_ORIGIN ?? 'http://127.0.0.1:8001';
+	const headers = { 'X-API-Key': process.env.SIMULATION_API_KEY ?? 'simulation-only-key' };
+	const health = await request.get(`${api}/health`);
 	expect(await health.json()).toMatchObject({ env: 'simulation', db: 'ok' });
 	const errors: string[] = [];
 	page.on('pageerror', (error) => errors.push(error.message));
@@ -37,7 +38,7 @@ test('hiding and reopening a job description preserves the draft', async ({ page
 	await page.locator('tbody tr').first().getByRole('link').click();
 	await expect(page).toHaveURL(/\/jobs\/\d+$/);
 	const jobId = page.url().split('/').pop();
-	const raw = await request.get(`http://127.0.0.1:8001/api/v1/jobs/${jobId}/raw`, { headers });
+	const raw = await request.get(`${api}/api/v1/jobs/${jobId}/raw`, { headers });
 	expect(raw.ok()).toBeTruthy();
 	expect((await raw.json()).raw_text).toBe(description);
 	expect(errors).toEqual([]);
