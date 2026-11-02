@@ -21,13 +21,13 @@
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
 
 <div class="min-h-screen bg-slate-50 text-slate-900">
-	<div class="flex min-h-screen">
+	<div class="flex min-h-screen flex-col md:flex-row">
 		<!-- NFR-001: functional, keyboard-reachable nav; no design system (docs/01 §9). -->
-		<nav class="w-56 shrink-0 border-r border-slate-200 bg-white p-4">
-			<a href="/" class="mb-6 block text-sm font-semibold tracking-tight text-slate-900">
+		<nav aria-label="Primary" class="w-full shrink-0 border-b border-slate-200 bg-white p-4 md:w-56 md:border-r md:border-b-0">
+			<a href="/" class="mb-3 block text-sm font-semibold tracking-tight text-slate-900 md:mb-6">
 				OSCAR Job Copilot
 			</a>
-			<ul class="space-y-1">
+			<ul class="flex flex-wrap gap-1 md:block md:space-y-1">
 				{#each NAV_ITEMS as item (item.href)}
 					{@const active = page.url.pathname === item.href}
 					<li>
@@ -42,11 +42,11 @@
 					</li>
 				{/each}
 			</ul>
-			<p class="mt-8 text-xs text-slate-400">
+			<p class="mt-8 hidden text-xs text-slate-400 md:block">
 				Milestone 5 — analytics.<br />All P0 milestones built. See docs/15.
 			</p>
 		</nav>
-		<main class="min-w-0 flex-1 p-8">
+		<main class="min-w-0 flex-1 p-4 md:p-8">
 			{@render children()}
 		</main>
 	</div>

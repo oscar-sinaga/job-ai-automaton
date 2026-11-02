@@ -17,6 +17,10 @@ Start with **[docs/18_FIRST_REAL_USAGE.md](docs/18_FIRST_REAL_USAGE.md)** for th
 first 3–5 applications, then measure M6 against
 [docs/15_ROADMAP_AND_MILESTONES.md](docs/15_ROADMAP_AND_MILESTONES.md).
 
+For testing without an API key, use **[docs/19_OFFLINE_SIMULATION.md](docs/19_OFFLINE_SIMULATION.md)**:
+an isolated simulation server plus desktop/mobile-viewport browser tests. This
+checks the app flow with example facts, not model quality or real applications.
+
 ## Start here
 
 - **[docs/README.md](docs/README.md)** — the design pack and current pilot guide: PRD, architecture, data model, API design, LLM/grounding design, security, test strategy, risks, and open decisions.
