@@ -105,6 +105,7 @@ Workflow **Local pilot runtime** membangun image sebenarnya dan memeriksa:
 
 - bootstrap database baru dan health seluruh stack;
 - otorisasi API dan kunci server tidak muncul dalam HTML browser;
+- enam tes browser desktop/mobile pada server Node di container, termasuk form, review, approval dan download;
 - capture halaman verifikasi, enrichment, profil, simulasi CV, approval dan PDF;
 - tracking sampai interview serta dashboard;
 - backup database/PDF dan restore pada database uji;

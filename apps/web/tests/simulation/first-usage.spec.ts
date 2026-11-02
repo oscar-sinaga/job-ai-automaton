@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 
-const API = 'http://127.0.0.1:8001';
-const headers = { 'X-API-Key': 'simulation-only-key' };
+const API = process.env.SIMULATION_API_ORIGIN ?? 'http://127.0.0.1:8001';
+const headers = { 'X-API-Key': process.env.SIMULATION_API_KEY ?? 'simulation-only-key' };
 const statement = 'Built Python pipelines for café operations and warehouse reporting.';
 const secondStatement = 'Automated SQL data-quality checks for daily inventory reports.';
 

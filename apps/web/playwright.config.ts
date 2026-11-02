@@ -18,13 +18,13 @@ export default defineConfig({
 		{ name: 'desktop', use: { ...devices['Desktop Chrome'] } },
 		{ name: 'mobile-chromium', use: { ...devices['Pixel 7'] } }
 	],
-	webServer: {
+	webServer: process.env.SIMULATION_EXTERNAL_SERVER === '1' ? undefined : {
 		command: 'npm run build && npm run preview -- --host 127.0.0.1 --port 5173 --strictPort',
 		url: 'http://127.0.0.1:5173',
 		reuseExistingServer: false,
 		env: {
-			API_BASE_URL: 'http://127.0.0.1:8001/api/v1',
-			API_KEY: 'simulation-only-key'
+			API_BASE_URL: `${process.env.SIMULATION_API_ORIGIN ?? 'http://127.0.0.1:8001'}/api/v1`,
+			API_KEY: process.env.SIMULATION_API_KEY ?? 'simulation-only-key'
 		}
 	}
 });

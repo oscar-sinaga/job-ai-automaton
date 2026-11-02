@@ -14,6 +14,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install browser test dependencies
+        run: cd apps/web && npm ci && npx playwright install --with-deps chromium
       - name: Start isolated simulation stack
         run: |
           set -euo pipefail
@@ -23,6 +28,16 @@ jobs:
         run: |
           set -euo pipefail
           python scripts/verify_pilot.py --state "$RUNNER_TEMP/pilot-state.json"
+          python - <<'PYCODE'
+          import os
+          import subprocess
+          from pathlib import Path
+          values = dict(line.split('=', 1) for line in Path('.env.simulation').read_text().splitlines())
+          environment = dict(os.environ, SIMULATION_EXTERNAL_SERVER='1', SIMULATION_VIDEO='1',
+                             SIMULATION_API_ORIGIN='http://127.0.0.1:8000',
+                             SIMULATION_API_KEY=values['OSCAR_API_KEY'])
+          subprocess.run(['npm', 'run', 'test:simulation'], cwd='apps/web', env=environment, check=True)
+          PYCODE
           python scripts/pilot.py backup --simulation --directory "$RUNNER_TEMP/pilot-backup"
           python scripts/pilot.py verify-backup --simulation --directory "$RUNNER_TEMP/pilot-backup"
           python scripts/pilot.py stop --simulation
@@ -67,7 +82,9 @@ jobs:
         if: always()
         with:
           name: local-pilot-runtime-evidence
-          path: ${{ runner.temp }}/pilot-evidence
+          path: |
+            ${{ runner.temp }}/pilot-evidence
+            apps/web/test-results/
           retention-days: 14
       - name: Stop owned stacks
         if: always()
