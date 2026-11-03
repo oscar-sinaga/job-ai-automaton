@@ -27,7 +27,7 @@ versions were reviewed/exported/downloaded in desktop Chromium and Pixel 7
 emulation. Source statement matching, source-parent association, contact and
 education snapshots, rejection of unauthorized requests, duplicate capture,
 approval gating and stable re-export bytes were checked. After final visual
-alignment corrections, unchanged snapshots were saved as new versions and
+alignment corrections, snapshots with unchanged claim text were saved as new versions and
 approved/exported/downloaded again through the API, with no extra model requests.
 The exported PDFs are selectable text, one A4 page each for this selected sample.
 
@@ -35,7 +35,11 @@ A closed Jobstreet URL was also captured without a description. Generation was
 correctly blocked until a full description is supplied. A search listing alone
 was not treated as evidence that the vacancy remained open.
 
-Local verification: 270 API tests on PostgreSQL; migrations up/down/up; Ruff,
+The offline provider also locates the fact block independently of the added
+metadata block; regression tests cover both block orders. Year-only personal
+references retain year-only labels rather than inferred months.
+
+Local verification: 272 API tests on PostgreSQL; migrations up/down/up; Ruff,
 Mypy, Svelte checks and production web build. Public CI uses synthetic data;
 personal career records and API credentials must never be uploaded as CI artifacts.
 The changed prompt also passed all four real-provider synthetic regression cases
