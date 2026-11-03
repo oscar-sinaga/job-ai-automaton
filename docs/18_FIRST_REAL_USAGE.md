@@ -1,6 +1,6 @@
 # Mulai memakai OSCAR Job Copilot
 
-Updated: 2026-11-02. Acuan scope tetap User Plan v2, PRD dan roadmap M0–M6.
+Updated: 2026-11-03. Acuan scope tetap User Plan v2, PRD dan roadmap M0–M6.
 
 ## Tujuan terdekat
 
@@ -72,8 +72,9 @@ tetap mengikuti data pemakaian setelah V1, sesuai User Plan §17.
 
 ## Batas verifikasi saat ini
 
-Pemeriksaan terakhir: **238 test backend lulus**, Ruff lint/format dan mypy lulus,
-serta Svelte type-check dan build frontend lulus.
+Regresi API, Ruff/format/mypy, frontend, enam tes browser desktop/mobile dan
+runtime Docker tersedia di Actions. Gunakan hasil CI dari commit yang dipakai.
+Panduan konfigurasi AI murah dan stack persisten ada di [20_MVP_PILOT.md](20_MVP_PILOT.md).
 
 Perbaikan diuji dengan database sementara, profil contoh dan fake LLM. Form HTML
 frontend, API, penyimpanan PDF, unduhan dan hubungan versi CV dengan lamaran diuji
@@ -81,13 +82,22 @@ melalui HTTP. PDF unduhan dirender dan diperiksa secara visual, termasuk Unicode
 Simulasi browser kini lulus pada desktop dan emulasi viewport HP, termasuk input
 profil, versi CV, approval, download PDF, tracking dan perubahan KPI. Runbook serta
 perbaikan formulir/responsivitas ada di [19_OFFLINE_SIMULATION.md](19_OFFLINE_SIMULATION.md).
-Belum ada evaluasi model asli, profil asli yang dilengkapi, pengujian perangkat HP
-fisik/share target, atau lamaran nyata yang dikirim.
+Secara terpisah, empat evaluasi model asli sudah lulus dengan `gpt-6-luna` pada
+3 November 2026: kecocokan peran, metric inflation, teknologi yang tidak dimiliki,
+dan prompt injection pada lowongan. Total 24 klaim/skill diperiksa, tanpa penolakan
+pada sampel ini. [Hasil lengkap](../evals/cv_grounding/results/2026-11-03_gpt-6-luna.json)
+memuat token, latensi dan draft fixture. Ini tidak membuktikan semua keluaran
+model di masa depan aman; review dan verifier tetap wajib.
+
+Share Android melalui HTTP Shortcuts juga sudah lulus pada emulator Android 15.
+Profil asli yang lengkap, HP fisik, PWA share target dan lamaran nyata tetap
+memerlukan validasi pemakaian.
 
 ## Serah-terima untuk sesi berikutnya
 
-Pekerjaan berikutnya adalah mempersiapkan profil asli dan akses model, mengevaluasi
-prompt v2 dengan fakta/lowongan yang representatif, lalu mencoba satu lamaran nyata.
+Pekerjaan berikutnya adalah mempersiapkan profil asli yang akurat, meninjau OPEN-5
+sebelum mengirim data pribadi, lalu mencoba satu lamaran nyata. Ulangi evaluasi
+jika prompt/model diubah atau near-miss baru ditemukan.
 Profil contoh dalam verifikasi tidak dimasukkan ke database utama. Jangan menandai
 M6 atau V1 selesai berdasarkan test otomatis. Catatan teknis perubahan ada di
 ADR-026; PRD dan scope User Plan v2 tetap menjadi acuan.

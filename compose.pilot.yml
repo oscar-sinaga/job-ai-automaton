@@ -24,6 +24,8 @@ services:
       OSCAR_DATABASE_URL: ${OSCAR_DATABASE_URL:?Run scripts/pilot.py init first}
       OSCAR_API_KEY: ${OSCAR_API_KEY:?Run scripts/pilot.py init first}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OSCAR_LLM_MODEL: ${OSCAR_LLM_MODEL:-gpt-6-luna}
+      OSCAR_LLM_MAX_OUTPUT_TOKENS: ${OSCAR_LLM_MAX_OUTPUT_TOKENS:-4096}
       OSCAR_STORAGE_DIR: /data/pdfs
       OSCAR_LOG_DIR: /data/logs
     ports: ['127.0.0.1:8000:8000']

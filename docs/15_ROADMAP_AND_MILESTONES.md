@@ -4,6 +4,14 @@ Method: **vertical slices** (master spec §38). Each milestone ends with somethi
 
 ## Readiness update — 2026-11-02
 
+**2026-11-03 technical MVP acceptance:** the local persistent runtime, desktop/
+mobile browser regressions, Android native share-shortcut prototype and real-model
+fixture suite are now verified. Four approved API cases passed with `gpt-6-luna`,
+no reasoning and a 4,096-output-token cap. Evidence is in
+[the recorded eval result](../evals/cv_grounding/results/2026-11-03_gpt-6-luna.json).
+This supersedes the historical notes below that no model eval had run. It does
+not complete M6's real-profile, physical-device or actual-application targets.
+
 The historical build checkmarks below describe implementation, not proof of real
 usage. The latest review reproduced unsupported claims/skills, approval rewinding
 an application, PDF rendering failures, and a missing download flow. These are now

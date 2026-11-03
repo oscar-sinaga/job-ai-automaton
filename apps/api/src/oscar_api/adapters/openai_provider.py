@@ -4,15 +4,15 @@ The only file in this codebase that imports `openai`. Uses the Responses API's
 `.parse()` helper for schema-constrained structured output (the same mechanism
 `messages.parse()` played on the Anthropic SDK this replaces).
 
-`gpt-4.1` (the configured default, ADR-025) is not a reasoning model, so the
-port's `effort` parameter has nothing to map to here and is accepted but
-ignored -- see the module docstring note below rather than silently
-mis-mapping it to something that would change behaviour unexpectedly.
+GPT-6 Luna is the cost-conscious default. GPT-5/6 reasoning effort is explicit;
+legacy non-reasoning models omit that parameter. There is no automatic model
+upgrade or hidden request retry.
 """
 
 from __future__ import annotations
 
 import time
+from typing import cast
 
 from openai import (
     APIConnectionError,
@@ -21,18 +21,15 @@ from openai import (
     AsyncOpenAI,
     AuthenticationError,
     RateLimitError,
+    omit,
 )
 from openai.types.responses import EasyInputMessageParam
 from openai.types.responses.response_output_message import ResponseOutputMessage
 from openai.types.responses.response_output_refusal import ResponseOutputRefusal
+from openai.types.shared.reasoning_effort import ReasoningEffort
 
 from oscar_api.config import get_settings
 from oscar_api.ports.llm import ContentBlock, LLMProviderError, LLMRefusalError, LLMResult, T
-
-# Non-streaming default; CV generation output (summary + several bullets +
-# missing_requirements) comfortably fits (docs/06 §9 latency targets assume
-# this, not a much larger output budget).
-_MAX_OUTPUT_TOKENS = 16000
 
 
 class OpenAILLMProvider:
@@ -44,6 +41,7 @@ class OpenAILLMProvider:
         # can otherwise exceed the UI's timeout and issue extra paid calls.
         self._client = AsyncOpenAI(api_key=settings.openai_api_key, max_retries=0)
         self._model = model or settings.llm_model
+        self._max_output_tokens = settings.llm_max_output_tokens
 
     async def aclose(self) -> None:
         await self._client.close()
@@ -55,13 +53,19 @@ class OpenAILLMProvider:
         user: str,
         output_model: type[T],
         prompt_version: str,
-        effort: str = "high",  # accepted for port compatibility, unused -- see module docstring
+        effort: str = "none",
         timeout_s: float = 90.0,
     ) -> LLMResult:
         input_messages: list[EasyInputMessageParam] = [
             {"role": "system", "content": block.text} for block in system
         ]
         input_messages.append({"role": "user", "content": user})
+        if effort not in {"none", "minimal", "low", "medium", "high", "xhigh", "max"}:
+            raise LLMProviderError("configuration", "Unsupported reasoning effort setting.")
+        # Original GPT-5 variants require at least minimal reasoning. GPT-6
+        # Luna supports none, avoiding extra reasoning tokens for selection.
+        if effort == "none" and (self._model == "gpt-5" or self._model.startswith("gpt-5-")):
+            effort = "minimal"
 
         started = time.monotonic()
         try:
@@ -72,7 +76,10 @@ class OpenAILLMProvider:
                 input=input_messages,  # type: ignore[arg-type]
                 text_format=output_model,
                 timeout=timeout_s,
-                max_output_tokens=_MAX_OUTPUT_TOKENS,
+                max_output_tokens=self._max_output_tokens,
+                reasoning={"effort": cast(ReasoningEffort, effort)}
+                if self._model.startswith(("gpt-5", "gpt-6"))
+                else omit,
                 store=False,
             )
         except AuthenticationError as exc:

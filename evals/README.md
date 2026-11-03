@@ -49,10 +49,18 @@ results include the actual model, prompt version, latency, usage and rejections.
 The in-memory fixture preserves experience/project IDs exactly as the database
 does. Offline regressions verify this and the evaluator's failure conditions.
 
-As of 2026-11-03, live-model acceptance is **not verified**. Automated approval
-review blocked the requested model calls, including the public synthetic fixture
-suite, pending explicit permission to send those inputs to OpenAI. No passing
-live result is recorded. Do not infer model quality from the deterministic tests.
-The fixture suite contains no real user career profile. `store=false` disables
+On 2026-11-03 the owner explicitly approved sending these public synthetic
+fixtures to OpenAI and requested a cheap model. All **four real-API cases passed**
+using `gpt-6-luna`, reasoning `none`, a 4,096-output-token cap and no SDK retries.
+[Recorded evidence](cv_grounding/results/2026-11-03_gpt-6-luna.json) contains the
+actual drafts, checks, source hashes, model, latency and token usage: 4,289 input
+and 561 output tokens, 24 claims/skills checked, zero rejections in this sample.
+The positive case retrieved all three expected facts. Latency was 8.7–9.5 seconds
+per request; this is a four-case sample, not a p95 or a reliability guarantee.
+
+At the official standard token prices checked that day, the token-price estimate
+is $0.0007094; assuming all input were charged as cache writes gives $0.000816625.
+These estimates are not an account invoice. The fixture suite contains no real
+user career profile. `store=false` disables
 response retrieval storage, not the account's separate retention policy; see
 [OpenAI data controls](https://developers.openai.com/api/docs/guides/your-data).

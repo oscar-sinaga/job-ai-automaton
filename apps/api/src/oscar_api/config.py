@@ -52,8 +52,9 @@ class Settings(BaseSettings):
     # name, kept as-is so `openai.AsyncOpenAI()` picks it up unprompted in any
     # script that doesn't go through this settings object.
     openai_api_key: str = Field(default="", validation_alias="OPENAI_API_KEY")
-    llm_model: str = "gpt-4.1"
-    llm_parser_model: str = "gpt-4.1"
+    llm_model: str = "gpt-6-luna"
+    llm_parser_model: str = "gpt-6-luna"
+    llm_max_output_tokens: int = Field(default=4096, ge=512, le=16000)
 
     @field_validator("cors_origins", mode="before")
     @classmethod

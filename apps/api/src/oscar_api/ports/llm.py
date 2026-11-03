@@ -61,6 +61,6 @@ class LLMProvider(Protocol):
         user: str,
         output_model: type[T],
         prompt_version: str,
-        effort: str = "high",
+        effort: str = "none",
         timeout_s: float = 90.0,
     ) -> LLMResult: ...
