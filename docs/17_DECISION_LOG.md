@@ -217,6 +217,31 @@ downloadable and reusable. Existing CVs without contact/source snapshots should
 be updated from Career Profile into a new version and reviewed again. No schema
 migration or real provider call is needed for these repairs.
 
+### ADR-027 — Low-cost default and real-model fixture acceptance
+*2026-11-03 · Accepted after the owner's explicit data-sharing and low-cost instruction*
+
+**Decision:** Use `gpt-6-luna` for the CV model default, superseding only ADR-025's
+model choice. It is available to the supplied project and supports Responses
+structured output. Set reasoning to `none`, output to 4,096 tokens by default,
+one request attempt and no automatic upgrade to a more expensive model. The
+validated output limit is 512–16,000; Compose forwards model/budget overrides.
+Non-reasoning models omit the reasoning parameter; original GPT-5 variants map
+`none` to their supported `minimal` setting when explicitly selected.
+
+**Evidence:** Four approved public-fixture API cases passed with prompt v2:
+positive MLOps, metric inflation, adjacent technology, and JD prompt injection.
+24 claims/skills were checked, with no rejected claims in this sample. Total
+usage was 4,289 input and 561 output tokens. Actual outputs, timing and tested
+source hashes are committed in
+[the eval result](../evals/cv_grounding/results/2026-11-03_gpt-6-luna.json).
+Standard rates on the test date were $0.10/M input, $0.50/M output and $0.125/M
+cache writes, per the [official model page](https://developers.openai.com/api/docs/models/gpt-6-luna).
+The token-price estimate is below $0.001, not a billing statement.
+
+**Limits:** This establishes fixture acceptance for the technical MVP. Real
+career facts, physical-phone capture and M6's actual application/time targets
+remain separate. OPEN-5 is not closed by permission to send public test fixtures.
+
 ## 2. Open Decisions
 
 ### OPEN-3 — Durable job queue

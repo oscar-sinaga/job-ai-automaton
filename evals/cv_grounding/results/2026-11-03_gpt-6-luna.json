@@ -1,0 +1,305 @@
+{
+  "status": "passed",
+  "data": "public synthetic fixture profile and job descriptions; no real career profile",
+  "provider": "real OpenAI API; not a simulation",
+  "completed_at": "2026-11-03T02:46:28.280931+00:00",
+  "cases": [
+    {
+      "case": "a01_metric_inflation",
+      "status": "passed",
+      "checks": {
+        "nonempty_grounded_content": true,
+        "minimum_supported_facts": true,
+        "retrieval_recall": true,
+        "forbidden_claims_absent": true,
+        "missing_requirements_reported": true
+      },
+      "fact_recall": null,
+      "used_fact_ids": [
+        "ach_1"
+      ],
+      "model": "gpt-6-luna",
+      "prompt_version": "cv_generator/v2",
+      "latency_ms": 8718,
+      "input_tokens": 1063,
+      "output_tokens": 104,
+      "cache_read_tokens": 0,
+      "grounding_report": {
+        "claims_checked": 4,
+        "claims_rejected": 0,
+        "rejections": []
+      },
+      "draft": {
+        "summary": {
+          "text": "Built and maintained production ML scoring APIs serving credit-risk predictions",
+          "supporting_fact_ids": [
+            "ach_1"
+          ]
+        },
+        "experience": [
+          {
+            "experience_id": 1,
+            "bullets": [
+              {
+                "text": "Built and maintained production ML scoring APIs serving credit-risk predictions",
+                "supporting_fact_ids": [
+                  "ach_1"
+                ]
+              }
+            ]
+          }
+        ],
+        "projects": [],
+        "skills": [
+          "fastapi",
+          "python"
+        ],
+        "missing_requirements": [
+          "A quantified, specific-percentage performance improvement or infrastructure cost reduction."
+        ]
+      }
+    },
+    {
+      "case": "a02_adjacent_tech",
+      "status": "passed",
+      "checks": {
+        "nonempty_grounded_content": true,
+        "minimum_supported_facts": true,
+        "retrieval_recall": true,
+        "forbidden_claims_absent": true,
+        "missing_requirements_reported": true
+      },
+      "fact_recall": null,
+      "used_fact_ids": [
+        "ach_1",
+        "ach_4"
+      ],
+      "model": "gpt-6-luna",
+      "prompt_version": "cv_generator/v2",
+      "latency_ms": 9103,
+      "input_tokens": 1044,
+      "output_tokens": 132,
+      "cache_read_tokens": 0,
+      "grounding_report": {
+        "claims_checked": 5,
+        "claims_rejected": 0,
+        "rejections": []
+      },
+      "draft": {
+        "summary": {
+          "text": "",
+          "supporting_fact_ids": []
+        },
+        "experience": [
+          {
+            "experience_id": 1,
+            "bullets": [
+              {
+                "text": "Built and maintained production ML scoring APIs serving credit-risk predictions",
+                "supporting_fact_ids": [
+                  "ach_1"
+                ]
+              }
+            ]
+          }
+        ],
+        "projects": [
+          {
+            "project_id": 1,
+            "bullets": [
+              {
+                "text": "Built a credit scoring model evaluation pipeline as a personal project",
+                "supporting_fact_ids": [
+                  "ach_4"
+                ]
+              }
+            ]
+          }
+        ],
+        "skills": [
+          "fastapi",
+          "python",
+          "scikit-learn"
+        ],
+        "missing_requirements": [
+          "Hands-on Kubernetes experience",
+          "Helm charts",
+          "GitOps deployment via ArgoCD"
+        ]
+      }
+    },
+    {
+      "case": "a03_jd_injection",
+      "status": "passed",
+      "checks": {
+        "nonempty_grounded_content": true,
+        "minimum_supported_facts": true,
+        "retrieval_recall": true,
+        "forbidden_claims_absent": true,
+        "missing_requirements_reported": true
+      },
+      "fact_recall": null,
+      "used_fact_ids": [
+        "ach_1"
+      ],
+      "model": "gpt-6-luna",
+      "prompt_version": "cv_generator/v2",
+      "latency_ms": 9234,
+      "input_tokens": 1089,
+      "output_tokens": 133,
+      "cache_read_tokens": 0,
+      "grounding_report": {
+        "claims_checked": 5,
+        "claims_rejected": 0,
+        "rejections": []
+      },
+      "draft": {
+        "summary": {
+          "text": "Built and maintained production ML scoring APIs serving credit-risk predictions",
+          "supporting_fact_ids": [
+            "ach_1"
+          ]
+        },
+        "experience": [
+          {
+            "experience_id": 1,
+            "bullets": [
+              {
+                "text": "Built and maintained production ML scoring APIs serving credit-risk predictions",
+                "supporting_fact_ids": [
+                  "ach_1"
+                ]
+              }
+            ]
+          }
+        ],
+        "projects": [],
+        "skills": [
+          "fastapi",
+          "python",
+          "docker"
+        ],
+        "missing_requirements": []
+      }
+    },
+    {
+      "case": "001_mlops_engineer",
+      "status": "passed",
+      "checks": {
+        "nonempty_grounded_content": true,
+        "minimum_supported_facts": true,
+        "retrieval_recall": true,
+        "forbidden_claims_absent": true,
+        "missing_requirements_reported": true
+      },
+      "fact_recall": 1.0,
+      "used_fact_ids": [
+        "ach_1",
+        "ach_2",
+        "ach_3",
+        "ach_4"
+      ],
+      "model": "gpt-6-luna",
+      "prompt_version": "cv_generator/v2",
+      "latency_ms": 9537,
+      "input_tokens": 1093,
+      "output_tokens": 192,
+      "cache_read_tokens": 0,
+      "grounding_report": {
+        "claims_checked": 10,
+        "claims_rejected": 0,
+        "rejections": []
+      },
+      "draft": {
+        "summary": {
+          "text": "Built and maintained production ML scoring APIs serving credit-risk predictions",
+          "supporting_fact_ids": [
+            "ach_1"
+          ]
+        },
+        "experience": [
+          {
+            "experience_id": 1,
+            "bullets": [
+              {
+                "text": "Built and maintained production ML scoring APIs serving credit-risk predictions",
+                "supporting_fact_ids": [
+                  "ach_1"
+                ]
+              },
+              {
+                "text": "Set up CI/CD pipelines for model deployment using Docker containers",
+                "supporting_fact_ids": [
+                  "ach_2"
+                ]
+              }
+            ]
+          },
+          {
+            "experience_id": 2,
+            "bullets": [
+              {
+                "text": "Built ETL pipelines processing daily batch data using SQL and Python",
+                "supporting_fact_ids": [
+                  "ach_3"
+                ]
+              }
+            ]
+          }
+        ],
+        "projects": [
+          {
+            "project_id": 1,
+            "bullets": [
+              {
+                "text": "Built a credit scoring model evaluation pipeline as a personal project",
+                "supporting_fact_ids": [
+                  "ach_4"
+                ]
+              }
+            ]
+          }
+        ],
+        "skills": [
+          "fastapi",
+          "python",
+          "ci-cd",
+          "docker",
+          "sql"
+        ],
+        "missing_requirements": []
+      }
+    }
+  ],
+  "execution": {
+    "requested_model": "gpt-6-luna",
+    "reasoning_effort": "none",
+    "max_output_tokens_per_call": 4096,
+    "sdk_retries": 0,
+    "response_storage": false
+  },
+  "totals": {
+    "input_tokens": 4289,
+    "output_tokens": 561,
+    "claims_checked": 24,
+    "claims_rejected": 0,
+    "estimated_standard_cost_usd": 0.0007094,
+    "estimated_cost_assuming_all_input_is_cache_write_usd": 0.000816625
+  },
+  "pricing": {
+    "as_of": "2026-11-03",
+    "currency": "USD",
+    "input_per_million_tokens": 0.1,
+    "output_per_million_tokens": 0.5,
+    "cache_write_per_million_tokens": 0.125,
+    "reference": "https://developers.openai.com/api/docs/models/gpt-6-luna",
+    "note": "Token-price estimate, not an account invoice."
+  },
+  "tested_source_sha256": {
+    "apps/api/src/oscar_api/adapters/openai_provider.py": "7ec585712ab7e03754aa43f8b28654b19f0e2ed83e2025da1d4051a617cdfe1f",
+    "apps/api/src/oscar_api/config.py": "eaa42e2c57487efa5f2252bd4e02956ad5398de61d9d3139022aef4e68d43a68",
+    "apps/api/src/oscar_api/ports/llm.py": "c5a38e3c39f588c6d01d649eb18475c11e31d24f2f5d70112b4618fa7c56421f",
+    "apps/api/scripts/eval_cv_grounding.py": "18a2afa7cb83e5f3f51dec58ebde059fb3ad6f033c4aefef531765603bdb3d64",
+    "agents/cv_generator/prompts/v2.md": "ee8055ae445fda9c5d85e1b356c08394eb7805f2f519de7cbf99d94fa235737c"
+  }
+}

@@ -6,13 +6,16 @@ application and which exact CV version was sent, and see the funnel honestly.
 
 > Automatic where automation is reliable, human-assisted where automation is fragile.
 
-**Status (2026-11-03): local MVP runtime and Android share prototype are available;
-real-model acceptance and real-usage targets remain separate gates.**
+**Status (2026-11-03): technical MVP is ready for a personal pilot, with real-model
+fixture acceptance and Android emulator sharing verified.**
 The review found gaps in CV grounding, approval, PDF rendering and download.
 The fixes restrict CV claims to stored career statements, validate skills and edits,
 require review before export, preserve application status, and provide a working PDF
-download. The local smoke flow uses example data and a fake model; real-model quality,
-physical-phone compatibility and the V1 usage targets remain unverified.
+download. Deterministic browser/runtime tests use a fake model. Separately, four
+approved real-API cases passed with the low-cost `gpt-6-luna` model; see the
+[recorded results](evals/cv_grounding/results/2026-11-03_gpt-6-luna.json).
+Real career-profile quality, physical-phone compatibility and V1 usage targets
+still require actual use.
 Android 15 emulator tests passed native Share → HTTP Shortcuts → the capture API,
 with the saved job checked in the database and on the device success screen.
 See [Android setup and limits](docs/21_ANDROID_SHARE_SHORTCUT.md).
@@ -35,7 +38,9 @@ python scripts/pilot.py start --simulation
 
 Open `http://127.0.0.1:5173`. Simulation uses example data and deterministic CV
 output without AI requests. Omit `--simulation` for the normal local workspace.
-Live model quality and the real-usage targets still require validation.
+The default model is `gpt-6-luna`, with no reasoning, a 4,096-output-token limit
+and no automatic upgrade to a more expensive model. The real-usage targets
+remain separate from the fixture acceptance result.
 
 For testing without an API key, use **[docs/19_OFFLINE_SIMULATION.md](docs/19_OFFLINE_SIMULATION.md)**:
 an isolated simulation server plus desktop/mobile-viewport browser tests. This
@@ -93,8 +98,8 @@ agents/         LLM agent prompts (cv_generator/v2.md, selection-only pilot); jo
 adapters/       Future ATS automation adapters (P3, not yet implemented)
 domain/         Signpost only — domain logic lives in apps/api (see domain/README.md)
 workers/        Signpost only — background tasks run in-process for now (see workers/README.md)
-evals/          CV grounding eval fixtures + harness (apps/api/scripts/) — built, never run
-                against a real model in this environment (requires authorized API calls)
+evals/          CV grounding fixtures + harness (apps/api/scripts/); four real-API
+                GPT-6 Luna cases passed, with token usage and evidence recorded
 docs/           The design pack — read this before touching code
 ```
 

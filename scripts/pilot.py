@@ -32,6 +32,8 @@ def initialize(env_file: Path, simulation: bool) -> None:
         "OSCAR_DATABASE_URL": f"postgresql+psycopg://oscar:{password}@db:5432/{database}",
         "OSCAR_API_KEY": secrets.token_urlsafe(32),
         "OPENAI_API_KEY": "",
+        "OSCAR_LLM_MODEL": "gpt-6-luna",
+        "OSCAR_LLM_MAX_OUTPUT_TOKENS": "4096",
     }
     # Exclusive creation preserves any existing credentials and configuration.
     descriptor = os.open(env_file, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)

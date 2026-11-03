@@ -45,8 +45,13 @@ aplikasi dan password database. Kunci tidak diberikan lewat argumen command line
 tidak dicetak, dan tidak di-commit. Jika stack sudah berjalan, `start` membuat
 ulang layanan yang konfigurasinya berubah. Mode simulasi tidak memerlukan kunci AI.
 
-Model default tetap `gpt-4.1`. Satu generasi memakai satu percobaan provider,
-timeout 90 detik dan batas output 16.000 token. Respons tidak disimpan untuk
+Model default adalah `gpt-6-luna`, mengikuti permintaan pemilik untuk biaya rendah.
+Satu generasi memakai satu percobaan provider, tanpa reasoning, timeout 90 detik
+dan batas output 4.096 token. Tidak ada fallback ke model yang lebih mahal.
+`OSCAR_LLM_MODEL` dan `OSCAR_LLM_MAX_OUTPUT_TOKENS` diteruskan ke container API;
+ubah konfigurasi lama yang masih memilih model lain jika ingin memakai default
+murah ini. Batas output dapat diatur dari 512 sampai 16.000 token.
+Respons tidak disimpan untuk
 retrieval di OpenAI (`store=false`); ini bukan pernyataan bahwa akun sudah
 mendapat Zero Data Retention. Review OPEN-5 sebelum mengirim profil pribadi.
 
@@ -118,9 +123,10 @@ Ikuti [18_FIRST_REAL_USAGE.md](18_FIRST_REAL_USAGE.md). Isi fakta karier secara
 akurat, review setiap versi CV, approve, lalu export dan periksa PDF sebelum
 dipakai. Lamaran dikirim secara manual dan versi CV yang dikirim dicatat di OSCAR.
 
-Evaluasi model asli, profil asli yang lengkap, share dari perangkat HP fisik dan
-lamaran nyata tetap merupakan pemeriksaan pilot. Hasil tes otomatis dengan
-provider simulasi tidak memenuhi pemeriksaan tersebut.
+Empat evaluasi model asli dengan fixture publik sudah lulus pada 3 November 2026
+memakai `gpt-6-luna`: [bukti hasil dan token](../evals/cv_grounding/results/2026-11-03_gpt-6-luna.json).
+Profil asli yang lengkap, share dari perangkat HP fisik dan lamaran nyata tetap
+merupakan pemeriksaan pilot. Hasil fixture tidak menggantikan bukti pemakaian itu.
 
 ## Backup dan pemeriksaan pemulihan
 

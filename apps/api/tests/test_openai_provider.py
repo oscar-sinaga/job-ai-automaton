@@ -13,7 +13,7 @@ from oscar_api.modules.cv.schemas import CVDraft, DraftBullet
 from oscar_api.ports.llm import ContentBlock, LLMProviderError
 
 
-def _provider(monkeypatch, *, error=None):
+def _provider(monkeypatch, *, error=None, model=None):
     draft = CVDraft(summary=DraftBullet(text="Stored statement", supporting_fact_ids=["ach_1"]))
     parse = AsyncMock(
         return_value=SimpleNamespace(
@@ -39,7 +39,7 @@ def _provider(monkeypatch, *, error=None):
         return client
 
     monkeypatch.setattr(openai_provider, "AsyncOpenAI", create)
-    return openai_provider.OpenAILLMProvider(), client, constructors
+    return openai_provider.OpenAILLMProvider(model=model), client, constructors
 
 
 async def _generate(provider):
@@ -58,12 +58,25 @@ async def test_adapter_limits_calls_and_disables_response_storage(monkeypatch):
     arguments = client.responses.parse.call_args.kwargs
     assert constructors[0]["max_retries"] == 0
     assert arguments["store"] is False
-    assert arguments["max_output_tokens"] == 16000
+    assert arguments["max_output_tokens"] == 4096
+    assert arguments["model"] == "gpt-6-luna"
+    assert arguments["reasoning"] == {"effort": "none"}
     assert arguments["timeout"] == 12
     assert result.parsed["summary"]["supporting_fact_ids"] == ["ach_1"]
     assert result.cache_read_tokens == 20
     await provider.aclose()
     client.close.assert_awaited_once()
+
+
+@pytest.mark.parametrize("model", ["gpt-4.1", "gpt-5-nano"])
+async def test_reasoning_controls_remain_compatible_with_other_models(monkeypatch, model):
+    provider, client, _ = _provider(monkeypatch, model=model)
+    await _generate(provider)
+    reasoning = client.responses.parse.call_args.kwargs["reasoning"]
+    if model == "gpt-4.1":
+        assert reasoning is openai_provider.omit
+    else:
+        assert reasoning == {"effort": "minimal"}
 
 
 @pytest.mark.parametrize("kind", ["authentication", "quota", "rate_limit", "timeout", "connection"])

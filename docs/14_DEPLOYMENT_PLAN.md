@@ -59,8 +59,9 @@ Every variable, its purpose, and whether it is a secret. `.env.example` mirrors 
 | `OSCAR_LOG_DIR` | no | `var/logs` | JSONL logs |
 | `OSCAR_TIMEZONE` | no | `Asia/Jakarta` | Analytics bucketing ([10_ANALYTICS_DEFINITIONS](10_ANALYTICS_DEFINITIONS.md) §7) |
 | `OPENAI_API_KEY` | **yes** | — | LLM provider (M3+, ADR-025) |
-| `OSCAR_LLM_MODEL` | no | `gpt-4.1` | CV generation model |
-| `OSCAR_LLM_PARSER_MODEL` | no | `gpt-4.1` | Parser model |
+| `OSCAR_LLM_MODEL` | no | `gpt-6-luna` | CV generation model; cost-conscious default (ADR-027) |
+| `OSCAR_LLM_PARSER_MODEL` | no | `gpt-6-luna` | Reserved parser model; parsing remains P1 |
+| `OSCAR_LLM_MAX_OUTPUT_TOKENS` | no | `4096` | Output cap; validated range 512–16000 |
 
 None of these have secret defaults — a missing `OSCAR_API_KEY` or `OPENAI_API_KEY` fails startup loudly rather than falling back to something insecure.
 
