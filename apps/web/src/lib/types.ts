@@ -169,6 +169,7 @@ export interface DraftBlock {
 	project_id?: number;
 	bullets: DraftBullet[];
 	company?: string;
+	location?: string;
 	title?: string;
 	start_date?: string;
 	end_date?: string | null;
@@ -184,6 +185,8 @@ export interface CVSections {
 	missing_requirements: string[];
 	source_facts?: Record<string, string>;
 	candidate?: Record<string, string>;
+	education?: Omit<Education, "id">[];
+	certifications?: Omit<Certification, "id">[];
 }
 
 export interface GroundingRejection {

@@ -14,8 +14,10 @@ require review before export, preserve application status, and provide a working
 download. Deterministic browser/runtime tests use a fake model. Separately, four
 approved real-API cases passed with the low-cost `gpt-6-luna` model; see the
 [recorded results](evals/cv_grounding/results/2026-11-03_gpt-6-luna.json).
-Real career-profile quality, physical-phone compatibility and V1 usage targets
-still require actual use.
+A private real-profile pilot also passed generation, review and PDF download
+for three real vacancies using the owner's reference layout; see
+[scope and evidence](docs/22_REAL_PROFILE_ACCEPTANCE.md). Gap suggestions remain
+review items. Physical-phone compatibility and V1 usage targets still require use.
 Android 15 emulator tests passed native Share → HTTP Shortcuts → the capture API,
 with the saved job checked in the database and on the device success screen.
 See [Android setup and limits](docs/21_ANDROID_SHARE_SHORTCUT.md).

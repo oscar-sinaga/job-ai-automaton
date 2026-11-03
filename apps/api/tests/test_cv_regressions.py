@@ -1,6 +1,7 @@
 """Regressions from the first real-usage readiness review."""
 
 import datetime as dt
+import json
 
 import httpx
 import pytest
@@ -213,3 +214,132 @@ async def test_reexport_keeps_the_exact_original_file_after_profile_changes(clie
     assert repeated.status_code == 201
     assert repeated.json()["artifact_id"] == first["artifact_id"]
     assert (await client.get(repeated.json()["download_url"])).content == original_pdf
+
+
+async def test_education_credentials_and_location_are_immutable_server_snapshots(client, fake_llm):
+    job_id, fact_id, experience_id = await _setup_job_and_profile(client)
+    education = await client.post(
+        "/api/v1/career-profile/education",
+        json={
+            "institution": "Example University",
+            "degree": "BSc",
+            "field": "Physics",
+            "start_date": "2018-08-01",
+            "end_date": "2022-07-01",
+        },
+    )
+    assert education.status_code == 201
+    credential = await client.post(
+        "/api/v1/career-profile/certifications",
+        json={
+            "name": "SQL Basic",
+            "issuer": "Example Academy",
+            "issued_date": "2023-02-01",
+        },
+    )
+    assert credential.status_code == 201
+    profile = (await client.get("/api/v1/career-profile")).json()
+    links = {**profile["application_profile"]["links"], "cv_location": "Jakarta"}
+    await client.patch("/api/v1/career-profile/application-profile", json={"links": links})
+    await client.patch(
+        f"/api/v1/career-profile/experiences/{experience_id}", json={"location": "Central Jakarta"}
+    )
+    fake_llm.queue(_good_draft(f"ach_{fact_id}", experience_id))
+    result = await client.post(f"/api/v1/jobs/{job_id}/generate-cv", json={})
+    assert result.status_code == 201, result.text
+    metadata_block = fake_llm.calls[-1]["system"][-1].text
+    metadata = json.loads(metadata_block.split("\n", 1)[1])
+    assert metadata["education"][0]["field"] == "Physics"
+    assert metadata["experiences"][0]["start_date"] == "2022-01-01"
+    assert "sample@example.com" not in metadata_block
+    version_id = result.json()["cv_version_id"]
+    saved = result.json()["sections"]
+    assert saved["education"][0]["institution"] == "Example University"
+    assert saved["certifications"][0]["issued_date"] == "2023-02-01"
+    assert saved["candidate"]["location"] == "Jakarta"
+    assert saved["experience"][0]["location"] == "Central Jakarta"
+
+    forged = {
+        **saved,
+        "education": [{"institution": "Invented University"}],
+        "certifications": [{"name": "Invented Certificate"}],
+    }
+    edited = await client.patch(f"/api/v1/cv/{version_id}", json={"sections": forged})
+    assert edited.status_code == 200, edited.text
+    assert edited.json()["sections"]["education"] == saved["education"]
+    assert edited.json()["sections"]["certifications"] == saved["certifications"]
+    await client.delete(f"/api/v1/career-profile/education/{education.json()['id']}")
+    await client.delete(f"/api/v1/career-profile/certifications/{credential.json()['id']}")
+    reread = (await client.get(f"/api/v1/cv/{version_id}")).json()["sections"]
+    assert reread == saved
+
+
+def test_reference_layout_renders_long_headers_and_multiple_pages():
+    version = CVVersion(
+        job_id=1,
+        version_number=1,
+        sections={
+            "candidate": {
+                "name": "Example Candidate",
+                "email": "example@example.com",
+                "linkedin": "https://example.com/" + "long-link-" * 20,
+                "location": "Jakarta",
+            },
+            "summary": {"text": "Data scientist working with production systems."},
+            "experience": [
+                {
+                    "company": "Long Company Name " * 10,
+                    "title": "Data Scientist",
+                    "start_date": "2022-01-01",
+                    "is_current": True,
+                    "bullets": [{"text": "Built and monitored reliable data pipelines."}] * 65,
+                }
+            ],
+            "education": [
+                {
+                    "institution": "Example University",
+                    "degree": "BSc",
+                    "field": "Physics",
+                    "start_date": "2018-08-01",
+                    "end_date": "2022-07-01",
+                }
+            ],
+            "certifications": [
+                {"name": "SQL Basic", "issuer": "Example Academy", "issued_date": "2023-02-01"}
+            ],
+            "skills": ["Python", "SQL"],
+        },
+    )
+    rendered = render_pdf(version)
+    assert rendered.startswith(b"%PDF")
+    assert len(rendered) > 1000
+
+
+async def test_generation_places_selected_fact_under_its_source_role(client, fake_llm):
+    job_id, fact_id, experience_id = await _setup_job_and_profile(client)
+    another = (
+        await client.post(
+            "/api/v1/career-profile/experiences",
+            json={
+                "company": "Acme Corp",
+                "title": "Freelance Analyst",
+                "start_date": "2024-05-01",
+                "is_current": True,
+            },
+        )
+    ).json()
+    draft = _good_draft(f"ach_{fact_id}", another["id"])
+    fake_llm.queue(draft)
+    generated = await client.post(f"/api/v1/jobs/{job_id}/generate-cv", json={})
+    assert generated.status_code == 201, generated.text
+    result = generated.json()
+    assert result["grounding_report"]["claims_rejected"] == 0
+    assert result["sections"]["experience"][0]["experience_id"] == experience_id
+    assert result["sections"]["experience"][0]["title"] == "ML Engineer"
+    assert result["sections"]["experience"][0]["bullets"] == draft["experience"][0]["bullets"]
+    # Manual editing still rejects the same forged association.
+    result["sections"]["experience"][0]["experience_id"] = another["id"]
+    edited = await client.patch(
+        f"/api/v1/cv/{result['cv_version_id']}", json={"sections": result["sections"]}
+    )
+    assert edited.status_code == 422

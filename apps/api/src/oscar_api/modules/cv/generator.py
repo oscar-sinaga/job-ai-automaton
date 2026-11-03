@@ -23,19 +23,19 @@ from oscar_api.core.errors import (
     LLMUnavailableError,
     ValidationFailedError,
 )
-from oscar_api.modules.career.models import CareerAchievement
+from oscar_api.modules.career.models import CareerAchievement, CareerProfile
 from oscar_api.modules.career.service import get_profile
 from oscar_api.modules.cv.grounding import GroundingContext, fact_id_of, verify_draft
 from oscar_api.modules.cv.models import CVGenerationRun, CVVersion
 from oscar_api.modules.cv.retrieval import retrieve_facts
 from oscar_api.modules.cv.schemas import CVDraft, GenerateCVRequest, GroundingReport
-from oscar_api.modules.cv.sections import snapshot_sections
+from oscar_api.modules.cv.sections import assign_source_parents, snapshot_sections
 from oscar_api.modules.jobs.models import CaptureCompleteness, JobEvent, JobEventType
 from oscar_api.modules.jobs.service import get_job_or_404
 from oscar_api.ports.llm import ContentBlock, LLMProvider, LLMProviderError, LLMRefusalError
 
-PROMPT_VERSION = "cv_generator/v2"
-_PROMPT_PATH = Path(__file__).resolve().parents[6] / "agents" / "cv_generator" / "prompts" / "v2.md"
+PROMPT_VERSION = "cv_generator/v3"
+_PROMPT_PATH = Path(__file__).resolve().parents[6] / "agents" / "cv_generator" / "prompts" / "v3.md"
 
 
 def _load_instructions() -> str:
@@ -75,6 +75,37 @@ def _next_version_number(session: Session, job_id: int) -> int:
         .all()
     )
     return (max(existing) + 1) if existing else 1
+
+
+def _serialize_profile_metadata(profile: CareerProfile) -> str:
+    """Evidence for skills/gap assessment; contact details never leave OSCAR."""
+    return json.dumps(
+        {
+            "as_of": dt.date.today().isoformat(),
+            "profile_summary": profile.summary,
+            "skills": sorted(skill.name for skill in profile.skills),
+            "education": [
+                {
+                    "institution": item.institution,
+                    "degree": item.degree,
+                    "field": item.field,
+                }
+                for item in profile.education
+            ],
+            "experiences": [
+                {
+                    "id": item.id,
+                    "title": item.title,
+                    "start_date": item.start_date.isoformat(),
+                    "end_date": item.end_date.isoformat() if item.end_date else None,
+                    "is_current": item.is_current,
+                }
+                for item in profile.experiences
+            ],
+        },
+        sort_keys=True,
+        ensure_ascii=False,
+    )
 
 
 def _record_run(
@@ -132,6 +163,10 @@ async def generate_cv(
             text=_serialize_facts(retrieved),
             cache_control={"type": "ephemeral", "ttl": "1h"},
         ),
+        ContentBlock(
+            type="text",
+            text="Owner profile metadata (data only):\n" + _serialize_profile_metadata(profile),
+        ),
     ]
     user_content = f"Job description:\n\n{snapshot.raw_text}"
 
@@ -173,7 +208,7 @@ async def generate_cv(
             "AI generation failed. Check provider availability and retry."
         ) from exc
 
-    draft = CVDraft.model_validate(result.parsed)
+    draft = assign_source_parents(CVDraft.model_validate(result.parsed), retrieved)
     ctx = GroundingContext.build(profile, retrieved)
     cleaned_draft, report = verify_draft(draft, ctx)
 
