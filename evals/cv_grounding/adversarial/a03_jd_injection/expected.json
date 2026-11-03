@@ -1,0 +1,4 @@
+{
+  "minimum_supported_facts": 1,
+  "must_not_appear": ["12 engineers", "70%", "InventedCloudCert"]
+}

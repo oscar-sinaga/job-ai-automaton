@@ -24,6 +24,7 @@ import argparse
 import asyncio
 import datetime as dt
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -76,6 +77,9 @@ def build_profile(profile_json: dict[str, Any]) -> CareerProfile:
             statement=a["statement"],
             metric_value=a.get("metric_value"),
             metric_verified=a.get("metric_verified", False),
+            experience_id=a.get("experience_id"),
+            project_id=a.get("project_id"),
+            context=a.get("context"),
             skill_tags=a.get("skill_tags", []),
             technology_tags=a.get("technology_tags", []),
             domain_tags=a.get("domain_tags", []),
@@ -91,7 +95,41 @@ def build_profile(profile_json: dict[str, Any]) -> CareerProfile:
     return profile
 
 
-async def run_case(case_dir: Path) -> None:
+def evaluate_case(case_dir: Path, draft: CVDraft, retrieved_ids: set[str]) -> dict[str, Any]:
+    """Check candidate claims separately from honest missing requirements.
+
+    Empty output cannot pass an adversarial case just by omitting every claim.
+    This evaluates the cleaned draft; rejected model claims are reported too.
+    """
+    expected = json.loads((case_dir / "expected.json").read_text(encoding="utf-8"))
+    bullets = [draft.summary] if draft.summary.text.strip() else []
+    for block in [*draft.experience, *draft.projects]:
+        bullets.extend(b for b in block.bullets if b.text.strip())
+    used = {fid for bullet in bullets for fid in bullet.supporting_fact_ids}
+    claims = "\n".join([*(b.text for b in bullets), *draft.skills]).casefold()
+    missing = "\n".join(draft.missing_requirements).casefold()
+    expected_ids = set(expected.get("expected_fact_ids", []))
+    recall = len(expected_ids & retrieved_ids) / len(expected_ids) if expected_ids else None
+    checks = {
+        "nonempty_grounded_content": bool(bullets),
+        "minimum_supported_facts": len(used) >= expected.get("minimum_supported_facts", 1),
+        "retrieval_recall": recall is None or recall >= 0.8,
+        "forbidden_claims_absent": all(
+            term.casefold() not in claims for term in expected.get("must_not_appear", [])
+        ),
+        "missing_requirements_reported": all(
+            term.casefold() in missing for term in expected.get("required_missing", [])
+        ),
+    }
+    return {
+        "status": "passed" if all(checks.values()) else "failed",
+        "checks": checks,
+        "fact_recall": recall,
+        "used_fact_ids": sorted(used),
+    }
+
+
+async def run_case(case_dir: Path) -> dict[str, Any]:
     repo_root = Path(__file__).resolve().parents[3]
     profile_json = json.loads(
         (repo_root / "evals" / "cv_grounding" / "profiles" / "oscar_sanitised.json").read_text()
@@ -100,40 +138,98 @@ async def run_case(case_dir: Path) -> None:
     jd_text = (case_dir / "jd.txt").read_text(encoding="utf-8")
 
     retrieved = retrieve_facts(profile, jd_text)
-    print(f"Retrieved {len(retrieved)} facts: {[f'ach_{a.id}' for a in retrieved]}")
-
     system = [
         ContentBlock(type="text", text=_load_instructions()),
         ContentBlock(type="text", text=_serialize_facts(retrieved)),
     ]
     provider = OpenAILLMProvider()
-    result = await provider.structured(
-        system=system,
-        user=f"Job description:\n\n{jd_text}",
-        output_model=CVDraft,
-        prompt_version=PROMPT_VERSION,
-    )
+    try:
+        result = await provider.structured(
+            system=system,
+            user=f"Job description:\n\n{jd_text}",
+            output_model=CVDraft,
+            prompt_version=PROMPT_VERSION,
+        )
+    finally:
+        await provider.aclose()
     draft = CVDraft.model_validate(result.parsed)
     ctx = GroundingContext.build(profile, retrieved)
     cleaned, report = verify_draft(draft, ctx)
 
-    print(
-        f"\nModel: {result.model_name}  latency: {result.latency_ms}ms  "
-        f"tokens in/out: {result.input_tokens}/{result.output_tokens}"
-    )
-    print(f"Claims checked: {report.claims_checked}  rejected: {report.claims_rejected}")
-    for rejection in report.rejections:
-        print(f"  REJECTED [{rejection.reason}]: {rejection.text}")
-    print("\nFinal (grounded) draft:")
-    print(cleaned.model_dump_json(indent=2))
+    assessment = evaluate_case(case_dir, cleaned, {f"ach_{a.id}" for a in retrieved})
+    return {
+        "case": case_dir.name,
+        **assessment,
+        "model": result.model_name,
+        "prompt_version": PROMPT_VERSION,
+        "latency_ms": result.latency_ms,
+        "input_tokens": result.input_tokens,
+        "output_tokens": result.output_tokens,
+        "cache_read_tokens": result.cache_read_tokens,
+        "grounding_report": report.model_dump(mode="json"),
+        "draft": cleaned.model_dump(mode="json"),
+    }
 
 
-def main() -> None:
+async def run_suite(cases: list[Path]) -> dict[str, Any]:
+    from oscar_api.ports.llm import LLMProviderError
+
+    results = []
+    blocked = False
+    for case in cases:
+        if blocked:
+            results.append({"case": case.name, "status": "not-run"})
+            continue
+        try:
+            result = await run_case(case)
+        except Exception as error:
+            result = {"case": case.name, "status": "error", "error_type": type(error).__name__}
+            if isinstance(error, LLMProviderError):
+                result["category"] = error.category
+                result["message"] = str(error)
+            blocked = True
+        results.append(result)
+        print(f"{case.name}: {result['status']}", flush=True)
+    return {
+        "status": "passed" if all(r["status"] == "passed" for r in results) else "failed",
+        "data": "public synthetic fixture profile and job descriptions; no real career profile",
+        "provider": "real OpenAI API; not a simulation",
+        "completed_at": dt.datetime.now(dt.UTC).isoformat(),
+        "cases": results,
+    }
+
+
+def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--case", required=True, help="Path to a case/adversarial directory")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--case", type=Path, help="Path to a case/adversarial directory")
+    group.add_argument("--suite", action="store_true", help="Run all checked-in eval cases")
+    parser.add_argument("--json-output", type=Path, help="Write machine-readable fixture evidence")
+    parser.add_argument("--env-file", type=Path, help="Read OPENAI_API_KEY from a private env file")
     args = parser.parse_args()
-    asyncio.run(run_case(Path(args.case)))
+    if args.env_file:
+        if args.env_file.is_symlink() or not args.env_file.is_file():
+            parser.error("The env file must be a regular file.")
+        values = dict(
+            line.split("=", 1)
+            for line in args.env_file.read_text().splitlines()
+            if "=" in line and not line.lstrip().startswith("#")
+        )
+        if not values.get("OPENAI_API_KEY"):
+            parser.error("The env file has no OPENAI_API_KEY.")
+        os.environ["OPENAI_API_KEY"] = values["OPENAI_API_KEY"]
+        from oscar_api.config import get_settings
+
+        get_settings.cache_clear()
+    root = Path(__file__).resolve().parents[3] / "evals" / "cv_grounding"
+    cases = [args.case] if args.case else sorted(p.parent for p in root.glob("*/*/expected.json"))
+    result = asyncio.run(run_suite(cases))
+    if args.json_output:
+        args.json_output.parent.mkdir(parents=True, exist_ok=True)
+        args.json_output.write_text(json.dumps(result, indent=2), encoding="utf-8")
+    print(json.dumps(result, indent=2))
+    return 0 if result["status"] == "passed" else 1
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

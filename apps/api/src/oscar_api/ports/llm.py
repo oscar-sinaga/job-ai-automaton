@@ -45,6 +45,14 @@ class LLMRefusalError(Exception):
         super().__init__(f"Model refused (category={category})")
 
 
+class LLMProviderError(Exception):
+    """A provider failure with a safe message, never its raw request/response."""
+
+    def __init__(self, category: str, message: str) -> None:
+        self.category = category
+        super().__init__(message)
+
+
 class LLMProvider(Protocol):
     async def structured(
         self,

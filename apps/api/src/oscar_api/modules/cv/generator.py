@@ -32,7 +32,7 @@ from oscar_api.modules.cv.schemas import CVDraft, GenerateCVRequest, GroundingRe
 from oscar_api.modules.cv.sections import snapshot_sections
 from oscar_api.modules.jobs.models import CaptureCompleteness, JobEvent, JobEventType
 from oscar_api.modules.jobs.service import get_job_or_404
-from oscar_api.ports.llm import ContentBlock, LLMProvider, LLMRefusalError
+from oscar_api.ports.llm import ContentBlock, LLMProvider, LLMProviderError, LLMRefusalError
 
 PROMPT_VERSION = "cv_generator/v2"
 _PROMPT_PATH = Path(__file__).resolve().parents[6] / "agents" / "cv_generator" / "prompts" / "v2.md"
@@ -165,7 +165,13 @@ async def generate_cv(
             status="failed",
             grounding_report={},
         )
-        raise LLMUnavailableError(f"CV generation failed: {exc}") from exc
+        # SDK errors can echo credentials or request content. Only the port's
+        # deliberately safe messages may be sent back to the browser.
+        if isinstance(exc, LLMProviderError):
+            raise LLMUnavailableError(str(exc), detail={"category": exc.category}) from exc
+        raise LLMUnavailableError(
+            "AI generation failed. Check provider availability and retry."
+        ) from exc
 
     draft = CVDraft.model_validate(result.parsed)
     ctx = GroundingContext.build(profile, retrieved)

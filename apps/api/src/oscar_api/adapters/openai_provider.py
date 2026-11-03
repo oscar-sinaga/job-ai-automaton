@@ -14,13 +14,20 @@ from __future__ import annotations
 
 import time
 
-from openai import AsyncOpenAI
+from openai import (
+    APIConnectionError,
+    APIStatusError,
+    APITimeoutError,
+    AsyncOpenAI,
+    AuthenticationError,
+    RateLimitError,
+)
 from openai.types.responses import EasyInputMessageParam
 from openai.types.responses.response_output_message import ResponseOutputMessage
 from openai.types.responses.response_output_refusal import ResponseOutputRefusal
 
 from oscar_api.config import get_settings
-from oscar_api.ports.llm import ContentBlock, LLMRefusalError, LLMResult, T
+from oscar_api.ports.llm import ContentBlock, LLMProviderError, LLMRefusalError, LLMResult, T
 
 # Non-streaming default; CV generation output (summary + several bullets +
 # missing_requirements) comfortably fits (docs/06 §9 latency targets assume
@@ -33,8 +40,13 @@ class OpenAILLMProvider:
         settings = get_settings()
         if not settings.openai_api_key:
             raise RuntimeError("OPENAI_API_KEY is not configured")
-        self._client = AsyncOpenAI(api_key=settings.openai_api_key)
+        # A user-initiated generation has one bounded attempt. Hidden retries
+        # can otherwise exceed the UI's timeout and issue extra paid calls.
+        self._client = AsyncOpenAI(api_key=settings.openai_api_key, max_retries=0)
         self._model = model or settings.llm_model
+
+    async def aclose(self) -> None:
+        await self._client.close()
 
     async def structured(
         self,
@@ -52,16 +64,39 @@ class OpenAILLMProvider:
         input_messages.append({"role": "user", "content": user})
 
         started = time.monotonic()
-        response = await self._client.responses.parse(
-            model=self._model,
-            # `list` is invariant, so a `list[EasyInputMessageParam]` doesn't
-            # structurally match the SDK's ~30-member input-item union even
-            # though every dict here is a valid EasyInputMessageParam at
-            # runtime -- a stub-variance false positive, not a real bug.
-            input=input_messages,  # type: ignore[arg-type]
-            text_format=output_model,
-            timeout=timeout_s,
-        )
+        try:
+            response = await self._client.responses.parse(
+                model=self._model,
+                # `list` is invariant; the SDK's broader input union rejects
+                # these valid message dictionaries at type-check time only.
+                input=input_messages,  # type: ignore[arg-type]
+                text_format=output_model,
+                timeout=timeout_s,
+                max_output_tokens=_MAX_OUTPUT_TOKENS,
+                store=False,
+            )
+        except AuthenticationError as exc:
+            raise LLMProviderError(
+                "authentication", "OpenAI authentication failed. Check OPENAI_API_KEY."
+            ) from exc
+        except RateLimitError as exc:
+            if exc.code == "insufficient_quota":
+                raise LLMProviderError(
+                    "quota", "OpenAI quota is unavailable. Check API billing and project limits."
+                ) from exc
+            raise LLMProviderError(
+                "rate_limit", "OpenAI is rate limiting requests. Wait briefly before retrying."
+            ) from exc
+        except APITimeoutError as exc:
+            raise LLMProviderError("timeout", "OpenAI timed out. Please retry.") from exc
+        except APIConnectionError as exc:
+            raise LLMProviderError(
+                "connection", "Cannot reach OpenAI. Check the server's network connection."
+            ) from exc
+        except APIStatusError as exc:
+            raise LLMProviderError(
+                "provider", "OpenAI could not complete generation. Check model access or retry."
+            ) from exc
         latency_ms = int((time.monotonic() - started) * 1000)
 
         # A refusal can show up two ways: the whole response marked incomplete

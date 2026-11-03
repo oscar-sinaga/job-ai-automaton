@@ -26,6 +26,47 @@ memerlukan kredensial provider yang valid. Jika belum dikonfigurasi, aplikasi
 memberi pesan bahwa AI belum tersedia. Hasil simulasi tidak otomatis menggantikan
 model pada mode normal.
 
+## Mengaktifkan AI pada mode normal
+
+`OSCAR_API_KEY` adalah kunci akses aplikasi untuk web, extension dan shortcut HP.
+`OPENAI_API_KEY` adalah kunci provider AI. Jangan menggunakan kunci OpenAI sebagai
+kunci aplikasi atau memasukkannya ke pengaturan extension/HTTP Shortcuts.
+
+Sesudah `init`, jalankan:
+
+```bash
+python scripts/pilot.py configure-ai
+python scripts/pilot.py start
+```
+
+Masukkan kunci OpenAI saat diminta di terminal; input tidak ditampilkan. Helper
+memperbarui `.env.pilot` secara atomik dengan izin privat, mempertahankan kunci
+aplikasi dan password database. Kunci tidak diberikan lewat argumen command line,
+tidak dicetak, dan tidak di-commit. Jika stack sudah berjalan, `start` membuat
+ulang layanan yang konfigurasinya berubah. Mode simulasi tidak memerlukan kunci AI.
+
+Model default tetap `gpt-4.1`. Satu generasi memakai satu percobaan provider,
+timeout 90 detik dan batas output 16.000 token. Respons tidak disimpan untuk
+retrieval di OpenAI (`store=false`); ini bukan pernyataan bahwa akun sudah
+mendapat Zero Data Retention. Review OPEN-5 sebelum mengirim profil pribadi.
+
+Pesan kegagalan membedakan autentikasi, kuota, rate limit, timeout dan koneksi.
+Kegagalan tidak membuat versi CV parsial. Periksa konfigurasi/billing/koneksi
+sesuai pesan sebelum mengulang.
+
+Evaluasi empat kasus dengan profil contoh publik sebelum memakai profil asli:
+
+```bash
+cd apps/api
+uv run python scripts/eval_cv_grounding.py --suite --env-file ../../.env.pilot \
+  --json-output ../../var/logs/live-eval.json
+```
+
+Evaluasi melakukan panggilan berbayar dan mengirim fixture ke OpenAI; jalankan
+hanya dengan izin pemilik kunci. Hasilnya harus `passed`, bukan sekadar berhasil
+mencetak draft. Kasusnya mencakup kecocokan peran, angka yang tidak didukung,
+teknologi yang tidak dimiliki, dan instruksi berbahaya dalam teks lowongan.
+
 ## Mencoba alur tanpa API AI
 
 Gunakan mode simulasi yang terpisah untuk contoh data:

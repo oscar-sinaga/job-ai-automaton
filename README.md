@@ -6,12 +6,16 @@ application and which exact CV version was sent, and see the funnel honestly.
 
 > Automatic where automation is reliable, human-assisted where automation is fragile.
 
-**Status (2026-11-02): M0–M5 code exists; preparing the first real-usage pilot.**
+**Status (2026-11-03): local MVP runtime and Android share prototype are available;
+real-model acceptance and real-usage targets remain separate gates.**
 The review found gaps in CV grounding, approval, PDF rendering and download.
 The fixes restrict CV claims to stored career statements, validate skills and edits,
 require review before export, preserve application status, and provide a working PDF
 download. The local smoke flow uses example data and a fake model; real-model quality,
-phone capture and the V1 usage targets remain unverified.
+physical-phone compatibility and the V1 usage targets remain unverified.
+Android 15 emulator tests passed native Share → HTTP Shortcuts → the capture API,
+with the saved job checked in the database and on the device success screen.
+See [Android setup and limits](docs/21_ANDROID_SHARE_SHORTCUT.md).
 
 Start with **[docs/18_FIRST_REAL_USAGE.md](docs/18_FIRST_REAL_USAGE.md)** for the
 first 3–5 applications, then measure M6 against
@@ -21,6 +25,8 @@ For a persistent local stack, use **[docs/20_MVP_PILOT.md](docs/20_MVP_PILOT.md)
 It runs PostgreSQL, the API and a standalone Node web server with Docker Compose,
 including explicit simulation mode, backup and restore verification. The CI runtime
 check exercises the actual images and verifies data and PDFs after container recreation.
+Normal-mode AI setup uses `python scripts/pilot.py configure-ai` with hidden terminal
+input. `OSCAR_API_KEY` stays separate from the provider's `OPENAI_API_KEY`.
 
 ```bash
 python scripts/pilot.py init --simulation
@@ -88,7 +94,7 @@ adapters/       Future ATS automation adapters (P3, not yet implemented)
 domain/         Signpost only — domain logic lives in apps/api (see domain/README.md)
 workers/        Signpost only — background tasks run in-process for now (see workers/README.md)
 evals/          CV grounding eval fixtures + harness (apps/api/scripts/) — built, never run
-                against a real model in this environment (needs OPENAI_API_KEY)
+                against a real model in this environment (requires authorized API calls)
 docs/           The design pack — read this before touching code
 ```
 

@@ -13,6 +13,7 @@ import httpx
 from fakes import FailingLLMProvider
 from oscar_api.main import app
 from oscar_api.modules.cv.deps import get_llm_provider
+from oscar_api.ports.llm import LLMProviderError
 
 LONG_JD = "We are hiring a Senior ML Engineer with strong Python experience. " * 5
 
@@ -198,6 +199,34 @@ async def test_generate_cv_when_provider_times_out_is_llm_unavailable(
 
     versions = await client.get(f"/api/v1/jobs/{job_id}/cv-versions")
     assert versions.json() == []
+
+
+async def test_unexpected_provider_errors_do_not_expose_credentials(client):
+    job_id, _, _ = await _setup_job_and_profile(client)
+
+    class UnsafeProvider:
+        async def structured(self, **kwargs):
+            raise RuntimeError("private upstream credential and job-description payload")
+
+    app.dependency_overrides[get_llm_provider] = lambda: UnsafeProvider()
+    response = await client.post(f"/api/v1/jobs/{job_id}/generate-cv", json={})
+    assert response.status_code == 503
+    assert "private upstream" not in response.text
+    assert (await client.get(f"/api/v1/jobs/{job_id}/cv-versions")).json() == []
+
+
+async def test_provider_failure_category_is_actionable_without_raw_payload(client):
+    job_id, _, _ = await _setup_job_and_profile(client)
+
+    class QuotaProvider:
+        async def structured(self, **kwargs):
+            raise LLMProviderError("quota", "Check API billing and project limits.")
+
+    app.dependency_overrides[get_llm_provider] = lambda: QuotaProvider()
+    response = await client.post(f"/api/v1/jobs/{job_id}/generate-cv", json={})
+    assert response.status_code == 503
+    assert response.json()["detail"]["category"] == "quota"
+    assert "billing" in response.json()["message"]
 
 
 async def test_edit_creates_new_version_and_keeps_the_original(

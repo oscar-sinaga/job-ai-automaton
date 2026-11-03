@@ -1,0 +1,5 @@
+{
+  "minimum_supported_facts": 1,
+  "must_not_appear": ["Kubernetes", "Helm", "ArgoCD"],
+  "required_missing": ["Kubernetes"]
+}
