@@ -125,8 +125,9 @@ dipakai. Lamaran dikirim secara manual dan versi CV yang dikirim dicatat di OSCA
 
 Empat evaluasi model asli dengan fixture publik sudah lulus pada 3 November 2026
 memakai `gpt-6-luna`: [bukti hasil dan token](../evals/cv_grounding/results/2026-11-03_gpt-6-luna.json).
-Profil asli yang lengkap, share dari perangkat HP fisik dan lamaran nyata tetap
-merupakan pemeriksaan pilot. Hasil fixture tidak menggantikan bukti pemakaian itu.
+Pengujian privat dengan profil asli dan tiga lowongan nyata juga sudah lulus
+untuk generasi/review/unduhan PDF; lihat [22_REAL_PROFILE_ACCEPTANCE.md](22_REAL_PROFILE_ACCEPTANCE.md).
+Share dari HP fisik dan lamaran nyata tetap merupakan pemeriksaan pilot.
 
 ## Backup dan pemeriksaan pemulihan
 

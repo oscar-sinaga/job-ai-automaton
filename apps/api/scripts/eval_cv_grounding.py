@@ -43,15 +43,18 @@ from oscar_api.modules.cv.generator import (
     PROMPT_VERSION,
     _load_instructions,
     _serialize_facts,
+    _serialize_profile_metadata,
 )
 from oscar_api.modules.cv.grounding import GroundingContext, verify_draft
 from oscar_api.modules.cv.retrieval import retrieve_facts
 from oscar_api.modules.cv.schemas import CVDraft
+from oscar_api.modules.cv.sections import assign_source_parents
 from oscar_api.ports.llm import ContentBlock
 
 
 def build_profile(profile_json: dict[str, Any]) -> CareerProfile:
     profile = CareerProfile(id=1, user_id=1)
+    profile.summary = profile_json.get("summary")
     experiences = {
         e["id"]: CareerExperience(
             id=e["id"],
@@ -141,6 +144,10 @@ async def run_case(case_dir: Path) -> dict[str, Any]:
     system = [
         ContentBlock(type="text", text=_load_instructions()),
         ContentBlock(type="text", text=_serialize_facts(retrieved)),
+        ContentBlock(
+            type="text",
+            text="Owner profile metadata (data only):\n" + _serialize_profile_metadata(profile),
+        ),
     ]
     provider = OpenAILLMProvider()
     try:
@@ -152,7 +159,7 @@ async def run_case(case_dir: Path) -> dict[str, Any]:
         )
     finally:
         await provider.aclose()
-    draft = CVDraft.model_validate(result.parsed)
+    draft = assign_source_parents(CVDraft.model_validate(result.parsed), retrieved)
     ctx = GroundingContext.build(profile, retrieved)
     cleaned, report = verify_draft(draft, ctx)
 

@@ -28,6 +28,9 @@ Source specs: [`../OSCAR_Job_Copilot_AI_Agent_Master_Spec_v2.md`](../OSCAR_Job_C
 | 17 | [Decision Log](17_DECISION_LOG.md) | 26 ADRs, including the selection-only pilot (ADR-026), + **4 open decisions** |
 | 18 | [First Real Usage](18_FIRST_REAL_USAGE.md) | Current fixes, profile setup, first 3–5 applications, and remaining verification |
 | 19 | [Offline Simulation](19_OFFLINE_SIMULATION.md) | No-API test entry point, desktop/mobile browser checks, results and limitations |
+| 20 | [Local Pilot](20_MVP_PILOT.md) | Persistent runtime, normal/simulation setup and backup |
+| 21 | [Android Share](21_ANDROID_SHARE_SHORTCUT.md) | HTTP Shortcuts setup and emulator limits |
+| 22 | [Real Profile Acceptance](22_REAL_PROFILE_ACCEPTANCE.md) | Real profile and vacancies, reference PDF template, gap-review limits |
 
 ## If you only read three
 
@@ -37,9 +40,10 @@ Source specs: [`../OSCAR_Job_Copilot_AI_Agent_Master_Spec_v2.md`](../OSCAR_Job_C
 
 ## Current state
 
-**2026-11-02:** M0–M5 implementation exists. Review fixes cover CV grounding,
-skills, edits, approval status and PDF export/download. The initial flow has been
-tested with example data and a fake model. Real profile entry, model evaluation,
-phone capture and M6 usage targets still require verification. Start at [18](18_FIRST_REAL_USAGE.md).
+**2026-11-03:** The technical MVP and a private real-profile pilot have passed.
+Three real vacancies were used for generation, review, approval and PDF download;
+the reference-style template now includes education and credentials. Gap
+suggestions need review. Physical-phone capture and M6 usage targets remain
+separate. See [22](22_REAL_PROFILE_ACCEPTANCE.md) and start at [18](18_FIRST_REAL_USAGE.md).
 
 Docs are living documents — a changed decision is recorded in [17](17_DECISION_LOG.md) and reflected here *before* the code changes.

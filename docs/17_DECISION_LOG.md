@@ -242,6 +242,17 @@ The token-price estimate is below $0.001, not a billing statement.
 career facts, physical-phone capture and M6's actual application/time targets
 remain separate. OPEN-5 is not closed by permission to send public test fixtures.
 
+### ADR-027 — Source-owned CV metadata and reference-style export
+**Date:** 2026-11-03. Real-profile testing exposed missing education in export,
+false gap suggestions caused by absent profile metadata, and model confusion
+between concurrent roles at one employer. Freeze owner-entered education,
+credentials and location in each version, and render them in the reference-style
+single-column A4 template. Derive selected bullets' role/project placement from
+unambiguous retrieved source parents before running the unchanged claim verifier.
+Supply education/skills/dates, excluding contacts, to `cv_generator/v3` for gap
+assessment. Gap suggestions remain review points rather than eligibility decisions.
+See [real-profile acceptance and limits](22_REAL_PROFILE_ACCEPTANCE.md).
+
 ## 2. Open Decisions
 
 ### OPEN-3 — Durable job queue

@@ -34,7 +34,26 @@ class SimulationProvider:
         effort: str = "high",
         timeout_s: float = 90.0,
     ) -> LLMResult:
-        facts = json.loads(system[-1].text)
+        # Profile metadata can follow the fact block. Do not rely on its
+        # position or mistake a metadata object for the career-fact array.
+        facts = []
+        for block in system:
+            try:
+                candidate = json.loads(block.text)
+            except json.JSONDecodeError:
+                continue
+            if (
+                isinstance(candidate, list)
+                and candidate
+                and all(
+                    isinstance(item, dict) and "fact_id" in item and "statement" in item
+                    for item in candidate
+                )
+            ):
+                facts = candidate
+                break
+        if not facts:
+            raise ValueError("Simulation requires a nonempty career-fact block")
         experience: dict[int, list[dict[str, object]]] = {}
         projects: dict[int, list[dict[str, object]]] = {}
         skills: set[str] = set()

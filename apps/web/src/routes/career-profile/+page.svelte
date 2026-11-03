@@ -323,7 +323,7 @@
 			class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2"
 		>
 			<p class="sm:col-span-2 text-xs text-slate-500">CV contact details are saved with each new CV version. Name and email are required for PDF export.</p>
-			{#each ['name', 'email', 'phone', 'linkedin', 'github', 'portfolio'] as field (field)}
+			{#each ['name', 'email', 'phone', 'linkedin', 'github', 'portfolio', 'location'] as field (field)}
 				<label class="text-xs text-slate-600">
 					CV {field}
 					<input

@@ -90,13 +90,17 @@ memuat token, latensi dan draft fixture. Ini tidak membuktikan semua keluaran
 model di masa depan aman; review dan verifier tetap wajib.
 
 Share Android melalui HTTP Shortcuts juga sudah lulus pada emulator Android 15.
-Profil asli yang lengkap, HP fisik, PWA share target dan lamaran nyata tetap
-memerlukan validasi pemakaian.
+Profil asli dan tiga lowongan nyata telah diuji pada alur generasi, review,
+approval, ekspor dan unduhan PDF. Batas dan hasilnya ada di
+[22_REAL_PROFILE_ACCEPTANCE.md](22_REAL_PROFILE_ACCEPTANCE.md). HP fisik, PWA share
+target dan lamaran nyata tetap memerlukan validasi pemakaian.
 
 ## Serah-terima untuk sesi berikutnya
 
-Pekerjaan berikutnya adalah mempersiapkan profil asli yang akurat, meninjau OPEN-5
-sebelum mengirim data pribadi, lalu mencoba satu lamaran nyata. Ulangi evaluasi
+Profil asli untuk pilot privat telah disiapkan dari referensi pemilik.
+Pekerjaan berikutnya adalah meninjau CV dan saran gap untuk satu lowongan yang
+masih terbuka, lalu pemilik dapat mengirim lamaran nyata. OPEN-5 tetap berlaku
+untuk penggunaan di luar pengujian personal yang sudah diizinkan. Ulangi evaluasi
 jika prompt/model diubah atau near-miss baru ditemukan.
 Profil contoh dalam verifikasi tidak dimasukkan ke database utama. Jangan menandai
 M6 atau V1 selesai berdasarkan test otomatis. Catatan teknis perubahan ada di

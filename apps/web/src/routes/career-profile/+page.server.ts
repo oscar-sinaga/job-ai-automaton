@@ -170,7 +170,7 @@ export const actions: Actions = {
 		const form = await request.formData();
 		const current = await apiFetch<CareerProfile>('/career-profile');
 		const links = { ...current.application_profile.links };
-		for (const key of ['name', 'email', 'phone', 'linkedin', 'github', 'portfolio']) {
+		for (const key of ['name', 'email', 'phone', 'linkedin', 'github', 'portfolio', 'location']) {
 			links[`cv_${key}`] = str(form, `cv_${key}`) ?? '';
 		}
 		return run(() =>

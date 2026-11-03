@@ -34,6 +34,7 @@
 	<section class="mt-6 rounded border border-slate-200 bg-white p-4">
 		<h2 class="text-sm font-semibold text-slate-900">CV contact details</h2>
 		<p class="mt-2 text-sm">{data.cv.sections.candidate?.name ?? 'Name not set'} · {data.cv.sections.candidate?.email ?? 'Email not set'}</p>
+		{#if data.cv.sections.candidate?.location}<p class="text-sm text-slate-500">{data.cv.sections.candidate.location}</p>{/if}
 		<p class="mt-2 text-xs text-slate-500">Edit contact details in <a href="/career-profile" class="underline">Career Profile</a>, then update this CV to save a new version.</p>
 		<form method="post" action="?/refreshProfile" use:enhance class="mt-2">
 			<button class="text-xs underline" type="submit">Update CV from profile</button>
@@ -121,6 +122,27 @@
 		</section>
 	{/if}
 
+	{#if data.cv.sections.education?.length}
+		<section class="mt-6 rounded border border-slate-200 bg-white p-4">
+			<h2 class="text-sm font-semibold text-slate-900">Education</h2>
+			{#each data.cv.sections.education as item, index (index)}
+				<div class="mt-2 text-sm">
+					<p class="font-medium">{item.institution}</p>
+					<p>{[item.degree, item.field].filter(Boolean).join(' | ')}</p>
+					<p class="text-xs text-slate-500">{[item.start_date, item.end_date].filter(Boolean).join(' – ')}</p>
+				</div>
+			{/each}
+		</section>
+	{/if}
+	{#if data.cv.sections.certifications?.length}
+		<section class="mt-6 rounded border border-slate-200 bg-white p-4">
+			<h2 class="text-sm font-semibold text-slate-900">Certifications</h2>
+			{#each data.cv.sections.certifications as item, index (index)}
+				<p class="mt-2 text-sm">{item.name}{item.issuer ? ` | ${item.issuer}` : ''}{item.issued_date ? ` (${item.issued_date})` : ''}</p>
+			{/each}
+		</section>
+	{/if}
+
 	<!-- Skills -->
 	{#if data.cv.sections.skills.length}
 		<section class="mt-6 rounded border border-slate-200 bg-white p-4">
@@ -132,7 +154,8 @@
 	<!-- Missing requirements -->
 	{#if data.cv.sections.missing_requirements.length}
 		<section class="mt-6 rounded border border-amber-200 bg-amber-50 p-4">
-			<h2 class="text-sm font-semibold text-amber-900">Requirements this CV doesn't cover</h2>
+			<h2 class="text-sm font-semibold text-amber-900">Requirements to check</h2>
+			<p class="mt-2 text-xs text-amber-800">Suggested review points for this vacancy. Check your full profile and the employer's wording; equivalent skills or qualifications may satisfy a requirement.</p>
 			<ul class="mt-2 list-inside list-disc text-sm text-amber-800">
 				{#each data.cv.sections.missing_requirements as req (req)}
 					<li>{req}</li>
