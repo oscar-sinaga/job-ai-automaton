@@ -1,1 +1,3 @@
 __pycache__/
+.consolidation.lock
+.consolidation-stage-*/

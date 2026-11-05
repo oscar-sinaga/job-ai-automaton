@@ -1,6 +1,6 @@
 # Arsip lowongan data — konsolidasi
 
-Buka **[HTML dengan filter dan detail](all-jobs.html)**, **[Excel](all-jobs.xlsx)**, atau **[JSON lengkap](all-jobs.json)**. Ini adalah tiga file konsolidasi yang diperbarui dengan nama tetap. File `YYYY-MM-DD.*` tetap menjadi arsip harian dan tidak diubah.
+Buka **[HTML dengan filter dan detail](all-jobs.html)**, **[Excel](all-jobs.xlsx)**, atau **[JSON lengkap](all-jobs.json)**. `all-jobs.json` adalah sumber kumulatif kanonis; Excel dan HTML merupakan tampilannya. Ketiganya diperbarui dengan nama tetap. File `YYYY-MM-DD.*` tetap menjadi arsip harian dan tidak diubah.
 
 Unduh `all-jobs.html` lalu buka di browser untuk filter offline; tampilan berkas HTML di GitHub tidak menjalankan filter. Simpan HTML di folder yang sama dengan Excel agar tautan **Buka detail** bekerja. Semua deskripsi dan data pencarian tertanam dalam HTML; hanya tautan sumber yang membuka situs luar. Excel juga memuat deskripsi dalam sheet **Descriptions**.
 
@@ -52,7 +52,7 @@ Unduh `all-jobs.html` lalu buka di browser untuk filter offline; tampilan berkas
 - HTML: pencarian lintas judul/perusahaan/skill/detail; filter tanggal WIB, bidang, tipe pekerjaan, pengaturan kerja, sumber, lokasi, cakupan feed, dan cakupan deskripsi. Filter dapat digabung. Buka kartu untuk detail, tautan sumber, serta seluruh pengamatan asli. Tautan detail di tabel di atas juga dapat dibuka langsung di HTML.
 - Excel: sheet **Jobs** berisi satu baris per identitas dengan tabel berfilter, freeze header, tautan sumber dan detail HTML. **Observations** berisi satu baris per kejadian; filter `run_date_wib` di sini untuk pencocokan tanggal yang tepat. `first_seen_wib`/`last_seen_wib` pada Jobs adalah batas pengamatan, bukan rentang ketersediaan yang terus-menerus.
 - **Descriptions** menampilkan ringkasan arsip, bagian parafrasa, asal sumber, waktu/cakupan dan status teks mentah. **Sources** menyimpan semua tautan historis. **Fields** menyimpan setiap field pengamatan sebagai JSON; **Runs** menyimpan seluruh metadata run; **Enrichment** menyimpan seluruh metadata tambahan; **Archives** menyimpan SHA-256 seluruh sembilan arsip awal. Teks panjang dipecah menjadi bagian bernomor agar batas sel Excel tidak memangkas data.
-- JSON: `jobs[]` menyimpan field tampilan, `observations[]` lengkap dan `description`; `runs[]` menyimpan metadata lengkap tanpa menghilangkan catatan/exclusions; exclusions berada di pengamatan masing-masing job. `archives[]` memuat checksum untuk seluruh varian arsip harian.
+- JSON: `jobs[]` menyimpan field tampilan, `observations[]` lengkap dan `description`; `runs[].payload` menyimpan setiap input run lengkap (termasuk metadata, listings dan exclusions) beserta checksum; `runs[].metadata` dan pengamatan job adalah proyeksi yang dapat dibangun ulang. `archives[]` memuat checksum untuk seluruh varian arsip harian.
 
 ## Identitas, tanggal, dan batasan
 
@@ -66,22 +66,57 @@ Teks lengkap tidak tersimpan pada arsip awal. Tujuh tambahan berupa parafrasa ba
 
 Sumber tambahan Teleperformance/TP dan Grab ditemukan terpisah; kaitan langsung ke ID JobStreet belum dibuktikan. Benefit Grab bersifat global dan kelayakan lokal belum disebutkan. Konflik employer ICUBE/Graha Karya Informasi, perbedaan kualifikasi Motasa, peringatan verifikasi hirer Grab, serta konflik status Thales dipertahankan. Halaman resmi tambahan Thales menyatakan lowongan tidak tersedia, sementara LinkedIn masih memperlihatkan deskripsi/kontrol aplikasi; hubungan langsung kedua ID belum dibuktikan. Tombol Apply tidak membuktikan lowongan masih menerima lamaran. Pengambilan web dapat berupa cache.
 
-## Regenerasi untuk pembaruan harian
+## Ingest harian dan regenerasi kumulatif
 
-Jalankan dari root repository (tidak menggunakan aplikasi, database, API AI, atau akses jaringan saat regenerasi):
+Tidak perlu menerbitkan JSON, CSV, atau Markdown bertanggal lagi. Sembilan arsip awal tetap utuh sebagai arsip; **`all-jobs.json` menjadi satu-satunya sumber kumulatif run**. Input run baru hanya berkas sementara di luar repository atau stdin. `enrichment.json` tetap input opsional untuk detail tambahan, bukan salinan feed kumulatif.
+
+Setup sekali dari root repository (Python 3.12 pada Linux/macOS atau WSL; lock memakai `fcntl`):
 
 ```bash
 python -m venv /tmp/job-listings-venv
 /tmp/job-listings-venv/bin/pip install -r data/job-listings/requirements.txt
-/tmp/job-listings-venv/bin/python data/job-listings/tools/regenerate.py
-/tmp/job-listings-venv/bin/python data/job-listings/tools/verify.py
 ```
 
-Verifikasi browser memakai Chromium. Jika belum tersedia, instal dengan `python -m playwright install chromium`, atau set `CHROMIUM_PATH` ke executable lokal. Verifikasi merender byte HTML dalam Chromium tanpa mengunjungi situs lowongan. Browser terkelola pada sesi ini memblokir navigasi `file://`, sehingga pengujian menggunakan `set_content`; pembukaan file melalui navigasi langsung belum diuji di lingkungan ini.
+Kontrak input: satu objek JSON dengan `run_id` string unik/stabil tanpa spasi tepi, `run_date_wib` dalam format `YYYY-MM-DD`, `listing_count` integer yang sesuai, serta `listings` dan `excluded` berupa daftar objek (gunakan `[]` saat kosong). Semua field metadata tambahan dipertahankan, termasuk nilai null, notes, batasan verifikasi dan run tanpa hasil. Gunakan format record lowongan yang sama dengan arsip awal; ID platform mempertahankan deduplikasi antar-run. Contoh struktur minimal:
 
-Tambahkan arsip `YYYY-MM-DD.json` berikutnya dengan format harian yang ada, lalu jalankan ulang generator dan verifikasi. `run_date_wib` harus sama dengan nama berkas dan `listing_count` harus sesuai. Generator hanya membaca JSON bertanggal, tidak membaca kembali output konsolidasi sebagai input. CSV/Markdown harian adalah proyeksi/catatan pendamping, tidak dihitung sebagai pengamatan baru. `enrichment.json` adalah **input opsional**, bukan JSON konsolidasi kedua. Generator tidak menjadwalkan atau mengubah proses koleksi harian; jalankan setelah penambahan arsip. Gunakan `--output-dir /tmp/job-preview` untuk preview sebelum memperbarui hasil utama.
+```json
+{"run_id":"2026-11-06-daily-wib","run_date_wib":"2026-11-06","listing_count":0,"listings":[],"excluded":[],"notes":["Tidak ada lowongan baru pada pemeriksaan ini."]}
+```
 
-Semua tooling dan hasil berada di folder data ini. Tidak ada perubahan kode/config/workflow aplikasi. Hasil deterministik: input dan template yang sama menghasilkan JSON, HTML dan workbook dengan byte yang sama.
+Urutan harian yang tepat:
+
+1. Mulai dari checkout bersih `main` terbaru. Kolektor menulis satu run ke `/tmp/oscar-job-run.json`; **jangan** menambahkan berkas harian baru di folder data. Simpan input yang sama untuk retry.
+2. Ingest dan perbarui keempat hasil tetap, lalu verifikasi:
+
+```bash
+/tmp/job-listings-venv/bin/python data/job-listings/tools/regenerate.py --ingest /tmp/oscar-job-run.json
+/tmp/job-listings-venv/bin/python data/job-listings/tools/verify.py
+git diff --check
+```
+
+3. Commit hanya `data/job-listings/all-jobs.json`, `all-jobs.xlsx`, `all-jobs.html`, dan `README.md`; sertakan `enrichment.json` hanya jika memang diperbarui. Push biasa, tanpa force. Jika remote bergerak dan push ditolak, gunakan checkout bersih dari `main` terbaru lalu ingest ulang **input sementara yang sama**, verifikasi, dan commit/push kembali. Jangan memilih salah satu versi JSON hasil konflik merge karena bisa menghapus run pihak lain.
+
+Alternatif stdin (isi stdin harus satu objek JSON yang sama; tidak membuat berkas input harian):
+
+```bash
+/tmp/job-listings-venv/bin/python data/job-listings/tools/regenerate.py --ingest - < /tmp/oscar-job-run.json
+```
+
+Regenerasi tanpa koleksi baru:
+
+```bash
+/tmp/job-listings-venv/bin/python data/job-listings/tools/regenerate.py
+```
+
+Perintah tanpa input membaca seluruh `runs[].payload` dari `all-jobs.json`, merekonsiliasi arsip lama, dan **mempertahankan semua run yang di-ingest**. Format konsolidasi v1 dimigrasi otomatis ke v2. Field tampilan memilih listing terakhir menurut tanggal pengumpulan, waktu `checked_at` berzona bila tersedia, lalu ID run sebagai tie-breaker; tidak menganggap urutan impor sebagai urutan kejadian.
+
+Exit code `0` berarti berhasil, dengan satu objek JSON di stdout: `ingestion_status` = `ingested`, `already_present`, atau `regenerated`, disertai `run_id`, `counts`, dan `canonical_file`. Retry dengan ID run dan konten JSON yang identik tidak menambah observasi; perbedaan whitespace/urutan key tidak dianggap perubahan. ID run yang sama dengan perubahan metadata atau record ditolak dengan exit code `2` dan pesan `Run ID conflict` di stderr, tanpa perubahan hasil. Untuk koreksi yang disengaja, gunakan **ID run baru** dan jelaskan relasinya pada metadata agar kedua pengamatan tetap tersimpan. Tidak ada mode replace/force untuk menghapus riwayat.
+
+Generator mengambil lock sebelum membaca sumber, membuat semua output di staging, memeriksa perubahan sumber secara bersamaan, lalu mengganti setiap file secara atomik; JSON kanonis diganti terakhir sebagai titik commit. Jika proses terhenti di tengah publikasi proyeksi, jalankan regenerasi tanpa input untuk menyelaraskannya dengan JSON kanonis. Jangan hapus input sementara sebelum perintah berhasil. Jika canonical berubah di luar lock, publikasi dibatalkan. File lock/staging diabaikan Git. Checksum menolak perubahan pada arsip lama. Tidak ada perubahan kode/config/workflow aplikasi atau penjadwalan baru.
+
+Gunakan `--output-dir /tmp/job-preview` bersama opsi ingest untuk preview tanpa mengubah sumber repository; preview tersebut tidak dianggap ingest permanen sampai perintah dijalankan tanpa `--output-dir`. `--data-dir PATH` memilih direktori sumber kumulatif/arsip untuk pengujian terisolasi. Hasil identik menghasilkan JSON, HTML dan workbook dengan byte identik.
+
+Verifikasi mencakup ingest run masa depan dari file/stdin, retry identik, konflik run ID pada metadata/record tanpa perubahan file, run kosong, regenerasi tanpa input yang mempertahankan riwayat baru, lock dan checksum arsip. Pemeriksaan data, Excel dan browser juga dijalankan. Chromium diperlukan; instal dengan `python -m playwright install chromium` atau set `CHROMIUM_PATH`. Browser terkelola sesi ini memblokir navigasi `file://`, sehingga pengujian merender byte HTML dengan `set_content`; navigasi file langsung belum diuji di lingkungan ini.
 
 ## Kontrak enrichment opsional (v1)
 

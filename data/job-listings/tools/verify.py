@@ -33,25 +33,34 @@ def verify_data(data):
     assert json.loads(json.dumps(data, ensure_ascii=False)) == data
     expected_observations = {}
     expected_runs = {}
+    canonical_payloads = {}
+    for run in data['runs']:
+        payload = run['payload']
+        generator.validate_run(payload)
+        assert run['payload_sha256'] == generator.payload_digest(payload)
+        ref = generator.run_ref(run)
+        canonical_payloads[payload['run_id']] = payload
+        expected_runs[ref] = {k: v for k, v in payload.items() if k not in ('listings', 'excluded')}
+        assert run['metadata'] == expected_runs[ref]
+        for kind in ('listings', 'excluded'):
+            for index, record in enumerate(payload[kind]):
+                expected_observations[(ref, kind, index)] = record
     for path in sorted(ROOT.glob('????-??-??.json')):
         daily = json.loads(path.read_text())
-        expected_runs[path.name] = {k: v for k, v in daily.items() if k not in ('listings', 'excluded')}
-        for kind in ('listings', 'excluded'):
-            for index, record in enumerate(daily.get(kind, [])):
-                expected_observations[(path.name, kind, index)] = record
+        assert canonical_payloads[daily['run_id']] == daily, 'Legacy archive differs from canonical payload'
     actual_observations = {}
     for job in data['jobs']:
         dates = []
         for obs in job['observations']:
-            key = obs['archive_file'], obs['kind'], obs['record_index']
+            key = obs['input_ref'], obs['kind'], obs['record_index']
             assert key not in actual_observations, key
-            assert generator.stable_id(obs['record'], obs['archive_file'], f"{obs['kind']}:{obs['record_index']}") == job['id']
+            assert generator.stable_id(obs['record'], obs['input_ref'], f"{obs['kind']}:{obs['record_index']}") == job['id']
             actual_observations[key] = obs['record']
             dates.append(obs['run_date_wib'])
         assert job['observation_dates_wib'] == sorted(set(dates))
         assert job['observation_count'] == len(job['observations'])
     assert actual_observations == expected_observations, 'Archive observation lost/changed'
-    assert {r['archive_file']: r['metadata'] for r in data['runs']} == expected_runs
+    assert {generator.run_ref(r): r['metadata'] for r in data['runs']} == expected_runs
     assert len({j['id'] for j in data['jobs']}) == data['counts']['jobs']
     assert len(expected_observations) == data['counts']['observations']
     for entry in data['archives']:
@@ -100,7 +109,7 @@ def verify_data(data):
         subprocess.run([sys.executable, str(ROOT / 'tools/regenerate.py'), '--output-dir', tmp], check=True, capture_output=True)
         for name in ('all-jobs.json', 'all-jobs.html', 'all-jobs.xlsx', 'README.md'):
             assert (ROOT / name).read_bytes() == (Path(tmp) / name).read_bytes(), f'Non-deterministic/stale output: {name}'
-    print(f"PASS: {len(data['jobs'])} identities, {len(expected_observations)} original observations, {len(data['archives'])} archive hashes; JSON/HTML/Excel round trips, table filters/links, reproducible outputs")
+    print(f"PASS: {len(data['jobs'])} identities, {len(expected_observations)} cumulative observations, {len(data['archives'])} archive hashes; JSON/HTML/Excel round trips, table filters/links, reproducible outputs")
 
 
 def verify_future_updates():
@@ -137,6 +146,111 @@ def verify_future_updates():
             else:
                 raise AssertionError(f'Invalid enrichment accepted: {change}')
     print('PASS: future updates preserve dated versions, distinguish null/zero, avoid fuzzy merges, validate enrichment, chunk long user text, keep formula-like text literal')
+
+
+def verify_cumulative_ingestion():
+    with tempfile.TemporaryDirectory(prefix='job-ingestion-') as tmp:
+        root = Path(tmp) / 'data'
+        root.mkdir()
+        input_file = Path(tmp) / 'temporary-run.json'
+        first = {'source': 'jobstreet', 'source_job_id': '1', 'title': 'Engineer', 'company': 'A', 'canonical_url': 'https://example.org/job/1', 'description_summary': 'First observation'}
+        seed = {'run_id': 'initial-run', 'run_date_wib': '2026-01-01', 'listing_count': 1, 'listings': [first], 'excluded': [], 'notes': ['Original metadata']}
+        archive = root / '2026-01-01.json'
+        archive.write_text(json.dumps(seed))
+        archive_bytes = archive.read_bytes()
+        future = {'run_id': 'future-run', 'run_date_wib': '2026-01-03', 'checked_at': '2026-01-03T01:00:00Z', 'listing_count': 2,
+                  'listings': [dict(first, description_summary='Updated observation'), dict(first, source_job_id='2', company='B')],
+                  'excluded': [dict(first, source_job_id='3', reason='Excluded during this run')],
+                  'notes': ['Future metadata'], 'extra': {'nested': [None, False, 0, 'Unicode — preserved']}}
+        command = [sys.executable, str(ROOT / 'tools/regenerate.py'), '--data-dir', str(root)]
+
+        def run(extra=(), stdin=None, success=True):
+            result = subprocess.run(command + list(extra), input=stdin, text=True, capture_output=True)
+            if success:
+                assert result.returncode == 0, result.stderr
+                return json.loads(result.stdout)
+            assert result.returncode == 2, result.stderr
+            return result
+
+        def output_bytes():
+            return {name: (root / name).read_bytes() for name in ('all-jobs.json', 'all-jobs.xlsx', 'all-jobs.html', 'README.md')}
+
+        run()  # Bootstrap from the existing archive, then preserve it unchanged.
+        input_file.write_text(json.dumps(future))
+        assert run(['--ingest', str(input_file)])['ingestion_status'] == 'ingested'
+        data = json.loads((root / 'all-jobs.json').read_text())
+        assert data['counts'] == {'jobs': 3, 'recorded_listings': 2, 'excluded_only': 1, 'observations': 4, 'runs': 2}
+        assert next(r for r in data['runs'] if r['metadata']['run_id']=='future-run')['payload'] == future
+        assert list(root.glob('2026-01-03.*')) == [], 'Ingestion must not create daily files'
+        assert archive.read_bytes() == archive_bytes
+        baseline = output_bytes()
+        # Object-key order/whitespace differences are still identical ingestion.
+        input_file.write_text(json.dumps(dict(reversed(list(future.items()))), indent=4))
+        assert run(['--ingest', str(input_file)])['ingestion_status'] == 'already_present'
+        assert output_bytes() == baseline
+        # Metadata conflicts as well as record conflicts must reject without writes.
+        for changed in (dict(future, notes=['Different notes']), dict(future, listings=[dict(first, description_summary='Conflicting'), future['listings'][1]])):
+            input_file.write_text(json.dumps(changed))
+            error = run(['--ingest', str(input_file)], success=False)
+            assert 'Run ID conflict' in error.stderr
+            assert output_bytes() == baseline
+        # Read stdin, including a run with no job observations but meaningful metadata.
+        empty = {'run_id': 'empty-future-run', 'run_date_wib': '2026-01-04', 'listing_count': 0, 'listings': [], 'excluded': [], 'notes': ['No new jobs found, metadata must survive']}
+        assert run(['--ingest', '-'], stdin=json.dumps(empty))['ingestion_status'] == 'ingested'
+        baseline = output_bytes()
+        assert run()['ingestion_status'] == 'regenerated'
+        assert output_bytes() == baseline, 'No-input regeneration discarded cumulative history'
+        assert run(['--ingest', '-'], stdin=json.dumps(empty))['ingestion_status'] == 'already_present'
+        assert output_bytes() == baseline
+        data = json.loads((root / 'all-jobs.json').read_text())
+        assert data['counts']['runs'] == 3 and data['counts']['observations'] == 4
+        assert {r['metadata']['run_id']: r['payload'] for r in data['runs']} == {'initial-run': seed, 'future-run': future, 'empty-future-run': empty}
+        assert next(j for j in data['jobs'] if j['id']=='jobstreet:1')['observation_count'] == 2
+        assert all(o['archive_file'] is None and o['input_ref']=='run:future-run' for j in data['jobs'] for o in j['observations'] if o['run_id']=='future-run')
+        wb = load_workbook(root / 'all-jobs.xlsx')
+        fields = reconstruct(wb['Fields'], [1, 2, 3, 4], 5, 6)
+        assert fields[('run:future-run', 'listings', 0, 'description_summary')] == 'Updated observation'
+        runs = reconstruct(wb['Runs'], [0, 1], 2, 3)
+        assert runs[('run:future-run', 'extra')] == future['extra']
+        assert runs[('run:empty-future-run', 'notes')] == empty['notes']
+        # A second non-archived run may reuse row zero without colliding in Excel.
+        later = {'run_id': 'later-future-run', 'run_date_wib': '2026-01-05', 'listing_count': 1,
+                 'listings': [dict(first, description_summary='Third dated observation')], 'excluded': []}
+        assert run(['--ingest', '-'], stdin=json.dumps(later))['ingestion_status'] == 'ingested'
+        baseline = output_bytes()
+        assert run()['ingestion_status'] == 'regenerated'
+        assert output_bytes() == baseline
+        data = json.loads((root / 'all-jobs.json').read_text())
+        assert data['counts']['runs'] == 4 and data['counts']['observations'] == 5
+        assert next(j for j in data['jobs'] if j['id']=='jobstreet:1')['observation_count'] == 3
+        wb = load_workbook(root / 'all-jobs.xlsx')
+        fields = reconstruct(wb['Fields'], [1, 2, 3, 4], 5, 6)
+        assert fields[('run:future-run', 'listings', 0, 'description_summary')] == 'Updated observation'
+        assert fields[('run:later-future-run', 'listings', 0, 'description_summary')] == 'Third dated observation'
+        assert sorted(p.name for p in root.glob('????-??-??.*')) == ['2026-01-01.json']
+        with sync_playwright() as pw:
+            executable = os.environ.get('CHROMIUM_PATH') or shutil.which('chromium') or shutil.which('google-chrome')
+            browser = pw.chromium.launch(executable_path=executable, headless=True, args=['--no-sandbox'])
+            page = browser.new_page()
+            page.set_content((root / 'all-jobs.html').read_text())
+            page.fill('#date-from', '2026-01-05')
+            page.fill('#date-to', '2026-01-05')
+            assert page.locator('#results > .job').count() == 1
+            page.locator('#results > .job > summary').click()
+            expect(page.locator('.detail').get_by_text('run:later-future-run', exact=False)).to_be_visible()
+            browser.close()
+        # A writer lock or corrupt source must fail without publishing partial output.
+        with (root / '.consolidation.lock').open('a') as lock:
+            generator.fcntl.flock(lock, generator.fcntl.LOCK_EX | generator.fcntl.LOCK_NB)
+            assert 'Another consolidation' in run(success=False).stderr
+        assert output_bytes() == baseline
+        archive.write_bytes(archive_bytes + b' ')
+        assert 'Immutable archive changed' in run(success=False).stderr
+        assert output_bytes() == baseline
+        archive.write_bytes(archive_bytes)
+        assert run()['ingestion_status'] == 'regenerated'
+        assert output_bytes() == baseline
+    print('PASS: future-run file/stdin ingestion, identical retries, record/metadata run-ID conflict rejection with unchanged outputs, empty-run metadata, no-input cumulative retention, Excel future records, writer lock and immutable archives')
 
 
 def verify_browser(data):
@@ -196,7 +310,7 @@ def verify_browser(data):
             for s in (job['description']['enrichment'] or {}).get('sections', []):
                 assert s['text'] in card.locator('.detail').inner_text()
             for obs in job['observations']:
-                history = card.locator('.record').filter(has=page.locator('pre')).filter(has_text=obs['archive_file']).first
+                history = card.locator('.record').filter(has=page.locator('pre')).filter(has_text=obs['input_ref']).first
                 assert history.count(), job['id']
             card.locator(':scope > summary').click()
         thales = next(j for j in data['jobs'] if j['id']=='linkedin:4487019307')
@@ -231,6 +345,7 @@ def main():
     data = json.loads((ROOT / 'all-jobs.json').read_text())
     verify_data(data)
     verify_future_updates()
+    verify_cumulative_ingestion()
     verify_browser(data)
 
 
