@@ -1,0 +1,176 @@
+{
+  "schema_version": 1,
+  "jobs": {
+    "linkedin:4482416376": {
+      "sections": [
+        {"heading": "Responsibilities", "text": "Operate batch/event pipelines for sales, renewals and reporting; build curated models and standard metrics; modernize legacy reports; deliver offline/online ML features; monitor quality and incidents; maintain runbooks, masking and row/column access controls; optimize query cost and refresh speed; agree reusable data contracts with stakeholders."},
+        {"heading": "Requirements", "text": "At least three years running production pipelines; strong SQL and analytical modeling; Python automation/tool development; structured and event/semi-structured data; operational debugging; stakeholder communication and clear documentation."},
+        {"heading": "Benefits", "text": "Not stated in retrieved description."}
+      ],
+      "source_url": "https://www.linkedin.com/jobs/view/4482416376/",
+      "observed_at": null,
+      "observation_window_utc": "2026-11-05T01:30:41Z/2026-11-05T01:32:18Z",
+      "completeness": "sectioned_paraphrase_not_full_text",
+      "raw_text_available": false,
+      "raw_text_availability": "not_collected",
+      "provenance": "Public web retrieval; may be cached. No application or personal-data submission."
+    },
+    "linkedin:4484577264": {
+      "sections": [
+        {"heading": "Role", "text": "Own ingestion and runtime infrastructure supporting travel analytics, data science and AI."},
+        {"heading": "Responsibilities", "text": "Build API/database/event pipelines with schema evolution and CDC; implement retries, deduplication, replay and freshness checks; operate Kubernetes/cloud scaling and recovery; maintain infrastructure-as-code, automated releases and observability; develop agent integrations, retrieval and guardrails; build evaluation and regression checks with data scientists."},
+        {"heading": "Requirements", "text": "Three to eight years relevant engineering; production ingestion ownership; Kubernetes, cloud and DevOps; Python/SQL, Linux/networking and containers; delivery guarantees and idempotency; Docker/Helm, GCP or AWS, Terraform and CI/CD; independent ownership, testing and stakeholder alignment."},
+        {"heading": "Additional information", "text": "Travel experience is advantageous. AI assistant/evaluation experience appears both within requirements and as a plus."},
+        {"heading": "Benefits", "text": "Not stated in retrieved description."}
+      ],
+      "source_url": "https://www.linkedin.com/jobs/view/4484577264/",
+      "observed_at": null,
+      "observation_window_utc": "2026-11-05T01:30:41Z/2026-11-05T01:32:18Z",
+      "completeness": "sectioned_paraphrase_not_full_text",
+      "raw_text_available": false,
+      "raw_text_availability": "not_collected",
+      "provenance": "Public web retrieval; may be cached. No application or personal-data submission."
+    },
+    "linkedin:4482830645": {
+      "sections": [
+        {"heading": "Responsibilities", "text": "Build enterprise AI infrastructure covering pipelines, training, deployment, MLOps, CI/CD, containers, cloud and monitoring. Improve security, scalability and performance; create reusable production environments aligned with architecture/governance; strengthen model lifecycle and cross-team delivery."},
+        {"heading": "Requirements", "text": "Six to ten years total, including three to five or more in large-scale AI platforms/MLOps. Relevant bachelor degree; leadership of end-to-end platform builds with production impact; enterprise/technology/consulting experience across businesses or regions; delivery across multiple AI use cases and high data volumes."},
+        {"heading": "Preferred", "text": "AWS, Azure, GCP or DevOps certification."},
+        {"heading": "Benefits", "text": "Not stated in retrieved description."}
+      ],
+      "source_url": "https://www.linkedin.com/jobs/view/4482830645/",
+      "observed_at": null,
+      "observation_window_utc": "2026-11-05T01:30:41Z/2026-11-05T01:32:18Z",
+      "completeness": "sectioned_paraphrase_not_full_text",
+      "raw_text_available": false,
+      "raw_text_availability": "not_collected",
+      "provenance": "Public web retrieval; may be cached. No application or personal-data submission."
+    },
+    "linkedin:4487019307": {
+      "sections": [
+        {"heading": "Responsibilities", "text": "Deliver AI assistants, knowledge search and automation from requirements to production; integrate enterprise APIs/data; evaluate accuracy and value; support adoption and regional reuse across AMEWA, Asia and India. Monitor availability, quality and cost; maintain CI/CD, support and documentation; apply security, access controls and human oversight."},
+        {"heading": "Required technical skills", "text": "Python and production AI/ML; LLMs, prompting, RAG, embeddings/vector search; REST/SQL and data quality; cloud, preferably Azure; Git, testing and CI/CD; AI evaluation and responsible AI."},
+        {"heading": "Preferred technical skills", "text": "Azure AI/ML, M365/Power Platform, containers, infrastructure automation, MLOps/LLMOps, document/workflow systems, ServiceNow, Jira and GitLab."},
+        {"heading": "People skills and experience", "text": "Relevant bachelor degree and three or more years; business-focused delivery, Agile and cross-region collaboration. Professional English required; French advantageous."},
+        {"heading": "Benefits", "text": "No concrete benefits stated."}
+      ],
+      "source_url": "https://www.linkedin.com/jobs/view/4487019307/",
+      "observed_at": null,
+      "observation_window_utc": "2026-11-05T01:30:41Z/2026-11-05T01:32:18Z",
+      "completeness": "sectioned_paraphrase_not_full_text",
+      "raw_text_available": false,
+      "raw_text_availability": "not_collected",
+      "provenance": "Public web retrieval; may be cached. No application or personal-data submission.",
+      "availability_status": "conflicting_platform_and_supplemental_official_status",
+      "official_application_status": "closed_notice_observed",
+      "supplemental_official_url": "https://careers.thalesgroup.com/global/en/job/R0346818/AI-Engineer-IS-IT-International",
+      "availability_conflict": "LinkedIn retains description and application/login controls; separately found matching official requisition explicitly says no longer available. Direct platform-to-requisition linkage not established.",
+      "official_observation_window_utc": "2026-11-05T01:31:02Z/2026-11-05T01:31:10Z"
+    },
+    "jobstreet:95668246": {
+      "sections": [
+        {"heading": "Responsibilities", "text": "Collect and process data through maintained pipelines; optimize databases; clean and transform data for reporting; monitor errors and troubleshoot; support automated workflows and CI/CD deployments."},
+        {"heading": "Requirements", "text": "Relevant S1 degree and at least one year data engineering or similar work; SQL, Python, ETL/ELT; relational and NoSQL databases; SSIS, Databricks or Snowflake; basic Power BI, Tableau or Qlik; version control, containers and CI/CD; problem-solving."},
+        {"heading": "Working conditions", "text": "Fully onsite in Yogyakarta with 24/7 rotating shifts."},
+        {"heading": "Preferred", "text": "BPO experience and immediate availability."},
+        {"heading": "Benefits", "text": "Not stated."}
+      ],
+      "source_url": "https://id.linkedin.com/jobs/view/app-dev-%E2%80%93-data-engineer-yogyakarta-site-at-tp-4483031007",
+      "observed_at": null,
+      "observation_window_utc": "2026-11-05T01:30:41Z/2026-11-05T01:32:18Z",
+      "completeness": "supplemental_matching_platform_paraphrase",
+      "raw_text_available": false,
+      "raw_text_availability": "not_collected",
+      "provenance": "JobStreet detail inaccessible; matching TP title/location/description found independently on LinkedIn. Cross-platform identity inferred, not direct link established."
+    },
+    "jobstreet:95471789": {
+      "sections": [
+        {"heading": "Role", "text": "Jakarta full-time, onsite; reports to Senior Manager in Growth Data Science."},
+        {"heading": "Responsibilities", "text": "Align paid-marketing measurement with business needs; apply attribution and causal inference; run A/B, holdout and geo-lift experiments; maintain media-mix models; develop marketing ML; integrate media/conversion data pipelines; build ROI dashboards; validate models, document findings and mentor colleagues."},
+        {"heading": "Requirements", "text": "Six or more years analytics/data science including three or more in paid marketing. Attribution, incrementality and media-mix expertise; deployed marketing ML; Python, SQL, Pandas, Scikit-learn, Spark; causal tools, cloud platforms, advertising APIs and ETL; GenAI/LLM familiarity."},
+        {"heading": "Benefits", "text": "Global benefits described include life/medical insurance, customizable GrabFlex, parental/birthday/volunteering leave, confidential assistance and flexible hours. Local eligibility not specified."}
+      ],
+      "source_url": "https://www.grab.careers/en/jobs/744000157403749/lead-data-scientist-analytics-digital-marketing/",
+      "observed_at": null,
+      "observation_window_utc": "2026-11-05T01:30:41Z/2026-11-05T01:32:18Z",
+      "completeness": "supplemental_matching_official_paraphrase",
+      "raw_text_available": false,
+      "raw_text_availability": "not_collected",
+      "provenance": "JobStreet detail inaccessible. Independent matching Grab employer page; direct JobStreet-to-requisition linkage not established. Apply Now link visible, not proof of accepting applications. Preserve prior JobStreet hirer-verification warning.",
+      "supplemental_official_url": "https://www.grab.careers/en/jobs/744000157403749/lead-data-scientist-analytics-digital-marketing/",
+      "official_job_id": "744000157403749"
+    },
+    "jobstreet:95471791": {
+      "sections": [
+        {"heading": "Role", "text": "Jakarta full-time within GrabFin/Lending analytics; description calls the role Senior Data Scientist despite shorter headline. Partner with product managers throughout development."},
+        {"heading": "Responsibilities", "text": "Define analytical requirements; study operational impact and text; create support-performance dashboards; use quasi-experiments, NLP and LLMs; work with engineering on pipelines and data integrity; communicate findings and influence evidence-based prioritization."},
+        {"heading": "Requirements", "text": "Relevant bachelor degree; at least two years analytics, BI or data science. High-volume internet/direct-to-consumer experience preferred. Spark, PySpark, Databricks, SQL, Power BI, Snowflake and multidimensional modeling."},
+        {"heading": "Benefits", "text": "Global benefits described include life/medical insurance, customizable GrabFlex, parental/birthday/volunteering leave, confidential assistance and flexible hours. Local eligibility not specified."}
+      ],
+      "source_url": "https://www.grab.careers/en/jobs/744000157392390/data-scientist-product-analytics-financial-services/",
+      "observed_at": null,
+      "observation_window_utc": "2026-11-05T01:30:41Z/2026-11-05T01:32:18Z",
+      "completeness": "supplemental_matching_official_paraphrase",
+      "raw_text_available": false,
+      "raw_text_availability": "not_collected",
+      "provenance": "JobStreet detail inaccessible. Independent matching Grab employer page; direct JobStreet-to-requisition linkage not established. Apply Now link visible, not proof of accepting applications. Preserve prior JobStreet hirer-verification warning.",
+      "supplemental_official_url": "https://www.grab.careers/en/jobs/744000157392390/data-scientist-product-analytics-financial-services/",
+      "official_job_id": "744000157392390"
+    },
+    "jobstreet:95639431": {
+      "sections": [],
+      "source_url": "https://id.jobstreet.com/job/95639431",
+      "observed_at": null,
+      "observation_window_utc": "2026-11-05T01:30:41Z/2026-11-05T01:32:18Z",
+      "completeness": "not_enriched_detail_unavailable",
+      "raw_text_available": false,
+      "raw_text_availability": "unavailable",
+      "provenance": "Canonical and /id/ JobStreet detail routes inaccessible via web tool. Search did not establish additional authoritative description. Retain existing repository summary as historical, not newly verified full detail.",
+      "retrieval_status": "tool_inaccessible_not_policy_denied"
+    },
+    "jobstreet:95696533": {
+      "sections": [],
+      "source_url": "https://id.jobstreet.com/job/95696533",
+      "observed_at": null,
+      "observation_window_utc": "2026-11-05T01:30:41Z/2026-11-05T01:32:18Z",
+      "completeness": "not_enriched_detail_unavailable",
+      "raw_text_available": false,
+      "raw_text_availability": "unavailable",
+      "provenance": "Canonical and /id/ JobStreet detail routes inaccessible via web tool. Search did not establish additional authoritative description. Retain existing repository summary as historical, not newly verified full detail.",
+      "retrieval_status": "tool_inaccessible_not_policy_denied"
+    },
+    "jobstreet:95598722": {
+      "sections": [],
+      "source_url": "https://id.jobstreet.com/job/95598722",
+      "observed_at": null,
+      "observation_window_utc": "2026-11-05T01:30:41Z/2026-11-05T01:32:18Z",
+      "completeness": "not_enriched_detail_unavailable",
+      "raw_text_available": false,
+      "raw_text_availability": "unavailable",
+      "provenance": "Canonical and /id/ JobStreet detail routes inaccessible via web tool. Search did not establish additional authoritative description. Retain existing repository summary as historical, not newly verified full detail.",
+      "retrieval_status": "tool_inaccessible_not_policy_denied"
+    },
+    "jobstreet:95501238": {
+      "sections": [],
+      "source_url": "https://id.jobstreet.com/job/95501238",
+      "observed_at": null,
+      "observation_window_utc": "2026-11-05T01:30:41Z/2026-11-05T01:32:18Z",
+      "completeness": "not_enriched_detail_unavailable",
+      "raw_text_available": false,
+      "raw_text_availability": "unavailable",
+      "provenance": "Canonical and /id/ JobStreet detail routes inaccessible via web tool. Search did not establish additional authoritative description. Retain existing repository summary as historical, not newly verified full detail.",
+      "retrieval_status": "tool_inaccessible_not_policy_denied"
+    },
+    "jobstreet:95100355": {
+      "sections": [],
+      "source_url": "https://id.jobstreet.com/job/95100355",
+      "observed_at": null,
+      "observation_window_utc": "2026-11-05T01:30:41Z/2026-11-05T01:32:18Z",
+      "completeness": "not_enriched_detail_unavailable",
+      "raw_text_available": false,
+      "raw_text_availability": "unavailable",
+      "provenance": "Canonical and /id/ JobStreet detail routes inaccessible via web tool. Search did not establish additional authoritative description. Retain existing repository summary as historical, not newly verified full detail.",
+      "retrieval_status": "tool_inaccessible_not_policy_denied"
+    }
+  }
+}
