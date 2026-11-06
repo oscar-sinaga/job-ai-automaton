@@ -5,14 +5,14 @@ Buka **[HTML dengan filter dan detail](all-jobs.html)**, **[Excel](all-jobs.xlsx
 Unduh `all-jobs.html` lalu buka di browser untuk filter offline; tampilan berkas HTML di GitHub tidak menjalankan filter. Simpan HTML di folder yang sama dengan Excel agar tautan **Buka detail** bekerja. Semua deskripsi dan data pencarian tertanam dalam HTML; hanya tautan sumber yang membuka situs luar. Excel juga memuat deskripsi dalam sheet **Descriptions**.
 
 <!-- GENERATED_INDEX_START -->
-**36 identitas · 31 pernah masuk daftar · 5 hanya dikecualikan · 38 pengamatan · 3 run.** Pengumpulan terakhir: 2026-11-05 WIB.
+**42 identitas · 36 pernah masuk daftar · 6 hanya dikecualikan · 49 pengamatan · 4 run.** Pengumpulan terakhir: 2026-11-06 WIB.
 
 | Posisi | Perusahaan | Bidang | Tanggal pengamatan WIB | Cakupan | Detail |
 |---|---|---|---|---|---|
 | [Data Scientist](https://id.jobstreet.com/job/95100355) | PT Garudafood Putra Putri Jaya | data_scientist | 2026-11-05 | recorded_listing | [Buka](all-jobs.html#job-0d95cb03548fc572d501) |
 | [Data Engineer](https://id.jobstreet.com/job/95145578) | PT ROCKSTAR SPORTS SCHOOL | data_engineer | 2026-11-04 | recorded_listing | [Buka](all-jobs.html#job-73b53ad0c3fb82474804) |
 | [AI & Machine Learning Engineer (Specialist)](https://id.jobstreet.com/job/95262181) | PT. Motasa Indonesia (Ladaku) | ml_engineer | 2026-11-04 | recorded_listing | [Buka](all-jobs.html#job-21c64f5c113e7b4b47af) |
-| [Data Scientist](https://id.jobstreet.com/job/95264526) | PT Sepulsa Teknologi Indonesia (Jakarta) | data_scientist | 2026-11-04 | recorded_listing | [Buka](all-jobs.html#job-40f6d038634d215f1462) |
+| [Data Scientist](https://id.jobstreet.com/job/95264526) | PT Sepulsa Teknologi Indonesia | data_scientist | 2026-11-04, 2026-11-06 | recorded_listing | [Buka](all-jobs.html#job-40f6d038634d215f1462) |
 | [Data Analyst](https://id.jobstreet.com/job/95292954) | PT Prima Nusantara Permai | data_analyst | 2026-11-04 | recorded_listing | [Buka](all-jobs.html#job-5aed0cec592c8fae9485) |
 | [AI & Machine Learning Engineer](https://id.jobstreet.com/job/95355529) | PT Sunindo KB Finance | ai_engineer | 2026-11-04 | recorded_listing | [Buka](all-jobs.html#job-5578ee515af5c274cfc6) |
 | [Lead Data Scientist (Analytics) - Digital Marketing](https://id.jobstreet.com/job/95471789) | PT Solusi Transportasi Indonesia | data_scientist | 2026-11-05 | recorded_listing | [Buka](all-jobs.html#job-b662f57f8bdbc34f01ed) |
@@ -20,30 +20,36 @@ Unduh `all-jobs.html` lalu buka di browser untuk filter offline; tampilan berkas
 | [Data Engineer](https://id.jobstreet.com/job/95486670) | PT Sharing Vision Indonesia | data_engineer | 2026-11-04 | recorded_listing | [Buka](all-jobs.html#job-3f935a65035239bd46ef) |
 | [AI Engineer](https://id.jobstreet.com/job/95501238) | PT Inovasi Daya Solusi | ai_engineer | 2026-11-05 | recorded_listing | [Buka](all-jobs.html#job-9fb733dd86edca1a88d2) |
 | [Data Engineer](https://id.jobstreet.com/id/job/95524239) | Alodokter | data_engineer | 2026-11-03, 2026-11-04 | recorded_listing | [Buka](all-jobs.html#job-b79a127ad2ba0284cb4c) |
-| [AI Engineer](https://id.jobstreet.com/job/95550334) | PT Digdaya Duta Digital | ai_engineer | 2026-11-04 | recorded_listing | [Buka](all-jobs.html#job-bca97679e05f97c83477) |
+| [AI Engineer](https://id.jobstreet.com/job/95550334) | PT Digdaya Duta Digital | ai_engineer | 2026-11-04, 2026-11-06 | recorded_listing | [Buka](all-jobs.html#job-bca97679e05f97c83477) |
+| [Junior Data Analyst](https://id.jobstreet.com/job/95554234) | PT Smart Multi Finance | data_analyst | 2026-11-06 | recorded_listing | [Buka](all-jobs.html#job-06a6a8955aeab8ab231c) |
 | [Data Engineer — Enterprise Data Integration](https://id.jobstreet.com/id/job/95582087) | PT Global Solusindo Kompudata | data_engineer | 2026-11-03 | recorded_listing | [Buka](all-jobs.html#job-b17fa196938f40f9aaf7) |
 | [AI Automation Engineer](https://id.jobstreet.com/job/95598722) | PT Dinamika Polimerindo | ai_engineer | 2026-11-05 | recorded_listing | [Buka](all-jobs.html#job-9f7cd7b34a1cf36eea72) |
-| [Data Scientist / Analyst Manager](https://id.jobstreet.com/id/job/95604833) | PT Mitra Adiperkasa Tbk | data_scientist | 2026-11-03 | recorded_listing | [Buka](all-jobs.html#job-e79e40b55def09271b8a) |
+| [Data Scientist / Analyst Manager](https://id.jobstreet.com/job/95604833) | PT Mitra Adiperkasa Tbk | data_scientist | 2026-11-03, 2026-11-06 | recorded_listing | [Buka](all-jobs.html#job-e79e40b55def09271b8a) |
 | [Cloud Data Engineer](https://id.jobstreet.com/job/95639431) | PT SMART,Tbk | data_engineer | 2026-11-05 | recorded_listing | [Buka](all-jobs.html#job-f475c9daa9c0a5686ac1) |
 | [App Dev – Data Engineer - Yogyakarta Site](https://id.jobstreet.com/job/95668246) | Teleperformance | data_engineer | 2026-11-05 | recorded_listing | [Buka](all-jobs.html#job-b7b2e8809ba6ec810cfd) |
-| [AI Solutions Engineer](https://id.jobstreet.com/job/95696533) | PT Setiawan Dwi Tunggal (SouthCity Group) | ai_engineer | 2026-11-05 | recorded_listing | [Buka](all-jobs.html#job-8ca8d57da6e7f5c6995d) |
+| [AI Solutions Engineer](https://id.jobstreet.com/job/95696533) | PT Setiawan Dwi Tunggal (SouthCity Group) | ai_engineer | 2026-11-05, 2026-11-06 | recorded_listing | [Buka](all-jobs.html#job-8ca8d57da6e7f5c6995d) |
 | [Machine Learning Engineer](https://www.linkedin.com/jobs/view/4268217099/) | Kredivo Group | ml_engineer | 2026-11-04 | recorded_listing | [Buka](all-jobs.html#job-4104ad54d733256fc597) |
 | [Judul tidak tersimpan (linkedin:4313070300)](https://id.linkedin.com/jobs/view/machine-learning-engineer-at-meshware-ai-4313070300) | Belum diketahui | Belum diketahui | 2026-11-03 | excluded_only | [Buka](all-jobs.html#job-18a6ee06475cc0fc8fdd) |
 | [Data Scientist](https://id.linkedin.com/jobs/view/data-scientist-at-kredivo-group-4324980219) | Kredivo Group | data_scientist | 2026-11-03 | recorded_listing | [Buka](all-jobs.html#job-7a1abdb6974ed24016aa) |
 | [Data Analyst - AID](https://id.linkedin.com/jobs/view/data-analyst-aid-at-pt-astra-international-tbk-4465016538) | PT Astra International Tbk | data_analyst | 2026-11-03 | recorded_listing | [Buka](all-jobs.html#job-21426ecc462d360d6b70) |
 | [Jr. Data Scientist](https://www.linkedin.com/jobs/view/4470954320/) | ilmuOne Data | data_scientist | 2026-11-04 | recorded_listing | [Buka](all-jobs.html#job-f56c82ad31730cb5a60b) |
 | [Senior/Data Scientist - Flight](https://www.linkedin.com/jobs/view/4473725304/) | Traveloka | data_scientist | 2026-11-03 | recorded_listing | [Buka](all-jobs.html#job-58e0ed27ecec4dd450c0) |
+| [ADMO Machine Learning Engineer Contract Based](https://id.linkedin.com/jobs/view/admo-machine-learning-engineer-contract-based-at-pt-astra-international-tbk-4475846482) | PT Astra International Tbk | ml_engineer | 2026-11-06 | recorded_listing | [Buka](all-jobs.html#job-d8c53b0bd2675bb22f99) |
 | [ETL Developer/ Data Engineer](https://www.linkedin.com/jobs/view/4477281636/) | Indocyber Global Teknologi, PT | Belum diketahui | 2026-11-04, 2026-11-05 | excluded_only | [Buka](all-jobs.html#job-75d44a76b83026b013b0) |
 | [Sr Machine Learning Engineer](https://id.linkedin.com/jobs/view/sr-machine-learning-engineer-at-finku-4480947390) | Finku | ml_engineer | 2026-11-03 | recorded_listing | [Buka](all-jobs.html#job-50576907a3978c765361) |
 | [Data Engineer](https://www.linkedin.com/jobs/view/4482416376/) | FIT HUB | data_engineer | 2026-11-05 | recorded_listing | [Buka](all-jobs.html#job-73e275df7c400cf25e8a) |
 | [AI Engineer](https://www.linkedin.com/jobs/view/4482485499/) | ICUBE | ai_engineer | 2026-11-04 | recorded_listing | [Buka](all-jobs.html#job-c0d15e81cb16d4021b15) |
 | [AI Platform Engineer](https://www.linkedin.com/jobs/view/4482830645/) | TechConnect | ai_engineer | 2026-11-05 | recorded_listing | [Buka](all-jobs.html#job-927fc87b8962753f946c) |
 | [AI Engineer](https://www.linkedin.com/jobs/view/4482985280/) | CV. Bangja Teknologi Informasi | ai_engineer | 2026-11-04 | recorded_listing | [Buka](all-jobs.html#job-e243c824b33853b908da) |
-| [Data Engineer](https://www.linkedin.com/jobs/view/4484177058/) | Insignia.co.id | Belum diketahui | 2026-11-04 | excluded_only | [Buka](all-jobs.html#job-f79a60afdbc3b40a44f4) |
+| [Data Engineer](https://id.linkedin.com/jobs/view/data-engineer-at-insignia-co-id-4484177058) | Insignia.co.id | data_engineer | 2026-11-04, 2026-11-06 | excluded_only | [Buka](all-jobs.html#job-f79a60afdbc3b40a44f4) |
 | [Data & AI Platform Engineer](https://www.linkedin.com/jobs/view/4484577264/) | Wego.com | data_engineer | 2026-11-05 | recorded_listing | [Buka](all-jobs.html#job-6878f1236e5a30402dbb) |
 | [Data Analyst](https://www.linkedin.com/jobs/view/4484653511/) | Asiatek Solusi Indonesia | Belum diketahui | 2026-11-04 | excluded_only | [Buka](all-jobs.html#job-eea9cac5972b10781b92) |
 | [AI Engineer](https://id.linkedin.com/jobs/view/ai-engineer-at-hanwha-life-indonesia-4485287250) | Hanwha Life Indonesia | ai_engineer | 2026-11-03 | recorded_listing | [Buka](all-jobs.html#job-bfb0ea2b1be32464dd4a) |
 | [Data Analyst](https://www.linkedin.com/jobs/view/4486044268/) | PT. Intikom Berlian Mustika | Belum diketahui | 2026-11-04 | excluded_only | [Buka](all-jobs.html#job-525d27c2d4af5d5c4417) |
+| [Data Scientist/AI Engineer](https://id.linkedin.com/jobs/view/data-scientist-ai-engineer-at-asiatek-solusi-indonesia-4486317699) | Asiatek Solusi Indonesia | Belum diketahui | 2026-11-06 | excluded_only | [Buka](all-jobs.html#job-f4203b5ab4c3b9313d3c) |
+| [Data Analyst (Contract)](https://id.linkedin.com/jobs/view/data-analyst-contract-at-allofresh-4486496483) | AlloFresh | data_analyst | 2026-11-06 | recorded_listing | [Buka](all-jobs.html#job-50b66943e06cc5064229) |
+| [Data Engineer](https://id.linkedin.com/jobs/view/data-engineer-at-pt-yafii-solusi-internasional-4486549985) | PT Yafii Solusi Internasional | data_engineer | 2026-11-06 | recorded_listing | [Buka](all-jobs.html#job-c48e6a3a4524ff85c517) |
+| [Data Analyst](https://id.linkedin.com/jobs/view/data-analyst-at-pt-permodalan-nasional-madani-persero-4486592220) | PT Permodalan Nasional Madani (Persero) | data_analyst | 2026-11-06 | recorded_listing | [Buka](all-jobs.html#job-dc1ace4d970670d9d60b) |
 | [AI Engineer – IS/IT International](https://www.linkedin.com/jobs/view/4487019307/) | Thales | ai_engineer | 2026-11-05 | recorded_listing | [Buka](all-jobs.html#job-8eda4a461ffce4ff98a2) |
 <!-- GENERATED_INDEX_END -->
 
