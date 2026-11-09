@@ -143,6 +143,9 @@ def test_port_change_preserves_other_values_bom_and_acl(tmp_path):
         $bytes = [IO.File]::ReadAllBytes($path)
         $afterAcl = Get-Acl -LiteralPath $path
         $afterRules = $afterAcl.Access | ConvertTo-Json -Depth 5 -Compress
+        $sections = [Security.AccessControl.AccessControlSections]::Access -bor
+            [Security.AccessControl.AccessControlSections]::Owner -bor
+            [Security.AccessControl.AccessControlSections]::Group
         @{{
             expected_text = ($after -ceq $original.Replace('8001', '8123'))
             same_acl = ($afterAcl.Owner -ceq $beforeAcl.Owner -and
@@ -150,6 +153,15 @@ def test_port_change_preserves_other_values_bom_and_acl(tmp_path):
                 $afterAcl.AreAccessRulesProtected -eq $beforeAcl.AreAccessRulesProtected -and
                 $afterRules -ceq $beforeRules)
             has_bom = ($bytes[0] -eq 239 -and $bytes[1] -eq 187 -and $bytes[2] -eq 191)
+            acl_diagnostic = @{{
+                same_owner = ($afterAcl.Owner -ceq $beforeAcl.Owner)
+                same_group = ($afterAcl.Group -ceq $beforeAcl.Group)
+                same_protection = ($afterAcl.AreAccessRulesProtected -eq $beforeAcl.AreAccessRulesProtected)
+                same_rules = ($afterRules -ceq $beforeRules)
+                same_descriptor = ($beforeAcl.GetSecurityDescriptorSddlForm($sections) -ceq
+                    $afterAcl.GetSecurityDescriptorSddlForm($sections))
+            }}
         }} | ConvertTo-Json -Compress
     """)
-    assert result == {"expected_text": True, "same_acl": True, "has_bom": True}
+    diagnostic = result.pop("acl_diagnostic")
+    assert result == {"expected_text": True, "same_acl": True, "has_bom": True}, diagnostic

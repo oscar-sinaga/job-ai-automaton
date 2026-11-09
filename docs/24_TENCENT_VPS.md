@@ -65,3 +65,8 @@ The Windows launcher workflow explicitly selects native Windows PowerShell for
 its Windows test process, preventing PowerShell 7 module paths from breaking
 the WinPS 5.1 ACL check. Linux uses Bash. This CI-only change does not alter the
 running Tencent application image or require a service restart.
+
+The Windows-only configuration writer reapplies its original security descriptor
+after atomic file replacement. The regression checks owner, group, inherited
+permissions, encoding and unchanged values using a synthetic file; diagnostic
+output contains comparison booleans only, not user SIDs or credentials.

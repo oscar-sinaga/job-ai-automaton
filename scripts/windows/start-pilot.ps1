@@ -55,6 +55,9 @@ function Set-PilotApiPort {
             throw 'Configuration changed concurrently; no update was applied.'
         }
         [IO.File]::Replace($temporaryPath, $Path, [NullString]::Value)
+        # Reapply the complete descriptor after the replacement's metadata merge,
+        # including the original owner/group and inherited access-rule state.
+        Set-Acl -LiteralPath $Path -AclObject $originalAcl
     } finally {
         if (Test-Path -LiteralPath $temporaryPath) { Remove-Item -LiteralPath $temporaryPath }
     }
