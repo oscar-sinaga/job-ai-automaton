@@ -2,6 +2,11 @@
 
 V1 target: **run locally on Oscar's Windows laptop.** Nothing is deployed to a cloud provider unless OPEN-1 forces it ([09_MOBILE_CAPTURE_DESIGN](09_MOBILE_CAPTURE_DESIGN.md) §2). Milestone 0 delivers exactly the setup described in §1–§3.
 
+Update 2026-11-10: workspace CV preferences, export/delete and integration settings
+are implemented. See [Settings behavior and rollout](SETTINGS.md). Tencent hosting
+is an explicit operator deployment; the historical local-first topology below
+remains useful for development.
+
 Update 2026-11-02: the complete local Compose runtime, isolated simulation mode,
 persistent volumes and backup/restore verification are documented in
 [20_MVP_PILOT.md](20_MVP_PILOT.md). The development-server instructions below

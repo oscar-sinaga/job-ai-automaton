@@ -36,7 +36,9 @@ jobs:
           environment = dict(os.environ, SIMULATION_EXTERNAL_SERVER='1', SIMULATION_VIDEO='1',
                              SIMULATION_API_ORIGIN='http://127.0.0.1:8000',
                              SIMULATION_API_KEY=values['OSCAR_API_KEY'])
-          subprocess.run(['npm', 'run', 'test:simulation'], cwd='apps/web', env=environment, check=True)
+          # This job verifies restart/backup persistence of its original fixture.
+          # Reset scenarios run in the separate browser-simulation CI database.
+          subprocess.run(['npm', 'run', 'test:simulation', '--', '--grep-invert', '@data-reset'], cwd='apps/web', env=environment, check=True)
           PYCODE
           python scripts/pilot.py backup --simulation --directory "$RUNNER_TEMP/pilot-backup"
           python scripts/pilot.py verify-backup --simulation --directory "$RUNNER_TEMP/pilot-backup"

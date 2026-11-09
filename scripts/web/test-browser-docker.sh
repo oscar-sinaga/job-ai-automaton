@@ -102,11 +102,12 @@ db_id=$last_container_id
 wait_ready "$db_id" PostgreSQL pg_isready -h 127.0.0.1 -U oscar -d "$database"
 
 start_owned "$prefix-api" --network "container:$db_id" --init --pids-limit=128 \
-  --read-only --tmpfs /tmp:rw,nosuid,size=128m \
+  --read-only --tmpfs /tmp:rw,nosuid,size=32m \
+  --tmpfs /data/pdfs:rw,nosuid,size=512m \
   --env PYTHONDONTWRITEBYTECODE=1 --env OPENAI_API_KEY= \
   "$api_image" python scripts/serve_simulation.py \
   --database-url "postgresql+psycopg://oscar:simulation-postgres-only@127.0.0.1:5432/$database" \
-  --storage-dir /tmp/oscar-test-pdfs --port 8001
+  --storage-dir /data/pdfs --port 8001
 api_id=$last_container_id
 wait_ready "$api_id" 'Simulation API' python -c \
   'import json,urllib.request; r=json.load(urllib.request.urlopen("http://127.0.0.1:8001/health", timeout=2)); assert r["env"] == "simulation" and r["db"] == "ok"'
@@ -130,7 +131,7 @@ browser_id="$(docker create --name "$prefix-browser" --label "com.oscar.test-run
   --mount "type=bind,src=$repo_dir/apps/web/tests/simulation,dst=/opt/oscar/apps/web/tests/simulation,readonly" \
   --mount "type=bind,src=$repo_dir/apps/web/playwright.config.ts,dst=/opt/oscar/apps/web/playwright.config.ts,readonly" "$browser_image")"
 owned+=("$browser_id")
-echo 'Running the six desktop/mobile browser regressions with the real isolated API.'
+echo 'Running desktop/mobile browser regressions with the real isolated API.'
 docker start "$browser_id" >/dev/null
 set +e
 docker exec "$browser_id" timeout --signal=TERM --kill-after=10s 600s \

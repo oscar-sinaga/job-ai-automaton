@@ -6,6 +6,7 @@ storage later touches only the adapter, never a caller.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from typing import Protocol
 
 
@@ -15,3 +16,11 @@ class Storage(Protocol):
         ...
 
     def load(self, uri: str) -> bytes: ...
+
+    def iter_load(self, uri: str) -> Iterator[bytes]:
+        """Read an artifact in bounded chunks for portable archive creation."""
+        ...
+
+    def delete(self, uri: str) -> None:
+        """Idempotently remove one artifact; never a directory or unrelated path."""
+        ...

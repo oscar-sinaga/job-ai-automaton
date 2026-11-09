@@ -23,6 +23,7 @@ from oscar_api.modules.applications import models as _applications_models  # noq
 from oscar_api.modules.career import models as _career_models  # noqa: F401
 from oscar_api.modules.cv import models as _cv_models  # noqa: F401
 from oscar_api.modules.jobs import models as _jobs_models  # noqa: F401
+from oscar_api.modules.settings import models as _settings_models  # noqa: F401
 
 config = context.config
 

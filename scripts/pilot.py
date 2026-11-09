@@ -23,6 +23,35 @@ def digest(path: Path) -> str:
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
+def secure_configuration_file(path: Path) -> None:
+    """Protect credentials with the platform's real permission mechanism."""
+    if os.name != "nt":
+        path.chmod(0o600)
+        return
+    script = r"""
+    $ErrorActionPreference = 'Stop'
+    $sid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
+    $acl = New-Object System.Security.AccessControl.FileSecurity
+    $acl.SetOwner($sid)
+    $acl.SetAccessRuleProtection($true, $false)
+    $rule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+        $sid, [System.Security.AccessControl.FileSystemRights]::FullControl,
+        [System.Security.AccessControl.AccessControlType]::Allow)
+    $acl.AddAccessRule($rule)
+    Set-Acl -LiteralPath $env:OSCAR_PRIVATE_CONFIG_TARGET -AclObject $acl
+    """
+    environment = os.environ.copy()
+    environment["OSCAR_PRIVATE_CONFIG_TARGET"] = str(path.resolve())
+    result = subprocess.run(
+        ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script],
+        env=environment,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    if result.returncode:
+        raise OSError("Could not protect the configuration file's Windows permissions")
+
+
 def initialize(env_file: Path, simulation: bool) -> None:
     password = secrets.token_urlsafe(32)
     database = "oscar_simulation_pilot" if simulation else "oscar_pilot"
@@ -38,7 +67,8 @@ def initialize(env_file: Path, simulation: bool) -> None:
     }
     # Exclusive creation preserves any existing credentials and configuration.
     descriptor = os.open(env_file, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    with os.fdopen(descriptor, "w") as stream:
+    with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+        secure_configuration_file(env_file)
         stream.write("".join(f"{key}={value}\n" for key, value in values.items()))
     print(f"Initialized {env_file.name}. Keep this file private.")
 
@@ -47,7 +77,7 @@ def configure_ai(env_file: Path) -> None:
     """Read a provider key without terminal echo, command arguments or logs."""
     if env_file.is_symlink() or not env_file.is_file():
         raise ValueError("Run init first; the configuration must be a regular file.")
-    lines = env_file.read_text().splitlines(keepends=True)
+    lines = env_file.read_text(encoding="utf-8-sig").splitlines(keepends=True)
     if sum(line.startswith("OPENAI_API_KEY=") for line in lines) != 1:
         raise ValueError("The configuration must contain exactly one OPENAI_API_KEY entry.")
     key = getpass.getpass("OpenAI API key (hidden): ").strip()
@@ -56,9 +86,15 @@ def configure_ai(env_file: Path) -> None:
     temporary_path: Path | None = None
     try:
         with tempfile.NamedTemporaryFile(
-            mode="w", dir=env_file.parent, prefix=".oscar-", suffix=".env.local", delete=False
+            mode="w",
+            encoding="utf-8",
+            dir=env_file.parent,
+            prefix=".oscar-",
+            suffix=".env.local",
+            delete=False,
         ) as stream:
             temporary_path = Path(stream.name)
+            secure_configuration_file(temporary_path)
             stream.writelines(
                 f"OPENAI_API_KEY={key}\n" if line.startswith("OPENAI_API_KEY=") else line
                 for line in lines

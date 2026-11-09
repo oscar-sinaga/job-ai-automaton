@@ -57,6 +57,7 @@ class CVGenerationRun(Base):
     prompt_version: Mapped[str] = mapped_column(String(50))
     status: Mapped[str] = mapped_column(String(20))  # succeeded | rejected_claims | failed
     grounding_report: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    preferences: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
     input_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     output_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)

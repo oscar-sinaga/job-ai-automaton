@@ -14,14 +14,33 @@ from fpdf import FPDF
 from fpdf.enums import MethodReturnValue
 
 from oscar_api.modules.cv.models import CVVersion
+from oscar_api.modules.settings.schemas import CVPreferences
 
 _FONT_DIR = Path(__file__).with_name("fonts")
-_BODY_SIZE = 9
-_LINE = 4.5
+
+
+class ResumePDF(FPDF):
+    def __init__(self, *, compact: bool) -> None:
+        super().__init__(format="A4")
+        self.cv_body_size = 8.5 if compact else 9.0
+        self.cv_line_height = 4.0 if compact else 4.5
+
+
+_HEADINGS_ID = {
+    "Work Experiences": "Pengalaman Kerja",
+    "Education Level": "Pendidikan",
+    "Projects & Other Experience": "Proyek dan Pengalaman Lain",
+    "Skills, Certifications & Other Experience": "Keahlian dan Sertifikasi",
+}
 
 
 def render_pdf(cv_version: CVVersion) -> bytes:
-    pdf = FPDF(format="A4")
+    preferences = CVPreferences.model_validate(cv_version.sections.get("preferences", {}))
+    pdf = ResumePDF(compact=preferences.layout == "compact")
+
+    def heading(label: str) -> str:
+        return _HEADINGS_ID.get(label, label) if preferences.language == "id" else label
+
     pdf.set_margins(9, 11, 9)
     pdf.set_auto_page_break(auto=True, margin=11)
     pdf.add_font("DejaVu", fname=str(_FONT_DIR / "DejaVuSans.ttf"))
@@ -40,7 +59,7 @@ def render_pdf(cv_version: CVVersion) -> bytes:
     if candidate.get("location"):
         _text(pdf, str(candidate["location"]), height=4)
     pdf.set_text_color(0, 0, 0)
-    pdf.set_font("DejaVu", "", _BODY_SIZE)
+    pdf.set_font("DejaVu", "", pdf.cv_body_size)
     summary = sections.get("summary") or {}
     if summary.get("text"):
         _text(pdf, summary["text"])
@@ -48,14 +67,14 @@ def render_pdf(cv_version: CVVersion) -> bytes:
 
     experience = sections.get("experience") or []
     if experience:
-        _heading(pdf, "Work Experiences")
+        _heading(pdf, heading("Work Experiences"))
         for block in sorted(
             experience, key=lambda item: item.get("start_date") or "", reverse=True
         ):
             _entry_header(
                 pdf,
                 str(block.get("company") or block.get("title") or "Experience"),
-                _date_range(block),
+                _date_range(block, preferences.language),
             )
             if block.get("location"):
                 pdf.set_text_color(110, 110, 110)
@@ -69,9 +88,9 @@ def render_pdf(cv_version: CVVersion) -> bytes:
 
     education = sections.get("education") or []
     if education:
-        _heading(pdf, "Education Level")
+        _heading(pdf, heading("Education Level"))
         for item in education:
-            _entry_header(pdf, str(item["institution"]), _date_range(item))
+            _entry_header(pdf, str(item["institution"]), _date_range(item, preferences.language))
             degree = " | ".join(str(item[key]) for key in ("degree", "field") if item.get(key))
             if degree:
                 _text(pdf, degree)
@@ -79,9 +98,11 @@ def render_pdf(cv_version: CVVersion) -> bytes:
 
     projects = sections.get("projects") or []
     if projects:
-        _heading(pdf, "Projects & Other Experience")
+        _heading(pdf, heading("Projects & Other Experience"))
         for block in projects:
-            _entry_header(pdf, str(block.get("name") or "Project"), _date_range(block))
+            _entry_header(
+                pdf, str(block.get("name") or "Project"), _date_range(block, preferences.language)
+            )
             for bullet in block.get("bullets", []):
                 _bullet(pdf, bullet["text"])
             pdf.ln(2)
@@ -89,9 +110,13 @@ def render_pdf(cv_version: CVVersion) -> bytes:
     skills = sections.get("skills") or []
     certifications = sections.get("certifications") or []
     if skills or certifications:
-        _heading(pdf, "Skills, Certifications & Other Experience")
+        _heading(pdf, heading("Skills, Certifications & Other Experience"))
         if skills:
-            _bullet(pdf, "Hard Skills: " + ", ".join(skills))
+            _bullet(
+                pdf,
+                ("Keahlian: " if preferences.language == "id" else "Hard Skills: ")
+                + ", ".join(skills),
+            )
         for item in certifications:
             details = " | ".join(str(item[key]) for key in ("name", "issuer") if item.get(key))
             issued = _date(item.get("issued_date"))
@@ -109,13 +134,17 @@ def _date(value: Any) -> str:
         return str(value)
 
 
-def _date_range(item: dict[str, Any]) -> str:
+def _date_range(item: dict[str, Any], language: str = "en") -> str:
     start = _date(item.get("start_date"))
-    end = "Present" if item.get("is_current") else _date(item.get("end_date"))
+    end = (
+        ("Saat ini" if language == "id" else "Present")
+        if item.get("is_current")
+        else _date(item.get("end_date"))
+    )
     return " - ".join(part for part in (start, end) if part)
 
 
-def _heading(pdf: FPDF, text: str) -> None:
+def _heading(pdf: ResumePDF, text: str) -> None:
     if pdf.will_page_break(25):
         pdf.add_page()
     pdf.ln(3)
@@ -123,38 +152,49 @@ def _heading(pdf: FPDF, text: str) -> None:
     pdf.multi_cell(0, 7, text, new_x="LMARGIN", new_y="NEXT")
     pdf.line(pdf.l_margin, pdf.y, pdf.w - pdf.r_margin, pdf.y)
     pdf.ln(2)
-    pdf.set_font("DejaVu", "", _BODY_SIZE)
+    pdf.set_font("DejaVu", "", pdf.cv_body_size)
 
 
-def _entry_header(pdf: FPDF, title: str, dates: str) -> None:
-    pdf.set_font("DejaVu", "B", _BODY_SIZE)
+def _entry_header(pdf: ResumePDF, title: str, dates: str) -> None:
+    pdf.set_font("DejaVu", "B", pdf.cv_body_size)
     date_width = min(48.0, max(33.0, pdf.get_string_width(dates) + 3)) if dates else 0.0
     title_width = pdf.epw - date_width
     height = cast(
         float,
-        pdf.multi_cell(title_width, _LINE, title, dry_run=True, output=MethodReturnValue.HEIGHT),
+        pdf.multi_cell(
+            title_width, pdf.cv_line_height, title, dry_run=True, output=MethodReturnValue.HEIGHT
+        ),
     )
-    if pdf.will_page_break(height + _LINE * 3):
+    if pdf.will_page_break(height + pdf.cv_line_height * 3):
         pdf.add_page()
     x, y = pdf.x, pdf.y
-    pdf.multi_cell(title_width, _LINE, title, align="L", new_x="LMARGIN", new_y="NEXT")
+    pdf.multi_cell(title_width, pdf.cv_line_height, title, align="L", new_x="LMARGIN", new_y="NEXT")
     bottom = pdf.y
     if dates:
         pdf.set_xy(x + title_width, y)
         pdf.set_font("DejaVu", "", 8)
-        pdf.multi_cell(date_width, _LINE, dates, align="R", new_x="LMARGIN", new_y="NEXT")
+        pdf.multi_cell(
+            date_width, pdf.cv_line_height, dates, align="R", new_x="LMARGIN", new_y="NEXT"
+        )
     pdf.set_xy(pdf.l_margin, max(pdf.y, bottom))
-    pdf.set_font("DejaVu", "", _BODY_SIZE)
+    pdf.set_font("DejaVu", "", pdf.cv_body_size)
 
 
-def _bullet(pdf: FPDF, text: str) -> None:
+def _bullet(pdf: ResumePDF, text: str) -> None:
     # Reserve a full first line before drawing its marker, including at page breaks.
-    if pdf.will_page_break(_LINE):
+    if pdf.will_page_break(pdf.cv_line_height):
         pdf.add_page()
     pdf.set_x(pdf.l_margin)
-    pdf.cell(3, _LINE, "•")
-    pdf.multi_cell(pdf.epw - 3, _LINE, text, align="L", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(3, pdf.cv_line_height, "•")
+    pdf.multi_cell(pdf.epw - 3, pdf.cv_line_height, text, align="L", new_x="LMARGIN", new_y="NEXT")
 
 
-def _text(pdf: FPDF, text: str, *, height: float = _LINE) -> None:
-    pdf.multi_cell(0, height, text, align="L", new_x="LMARGIN", new_y="NEXT")
+def _text(pdf: ResumePDF, text: str, *, height: float | None = None) -> None:
+    pdf.multi_cell(
+        0,
+        pdf.cv_line_height if height is None else height,
+        text,
+        align="L",
+        new_x="LMARGIN",
+        new_y="NEXT",
+    )

@@ -21,6 +21,7 @@ from oscar_api.modules.cv.schemas import CVDraft
 from oscar_api.modules.cv.sections import snapshot_sections
 from oscar_api.modules.jobs.models import JobEvent, JobEventType, JobStatus
 from oscar_api.modules.jobs.service import get_job_or_404
+from oscar_api.modules.settings.schemas import CVPreferences
 from oscar_api.ports.storage import Storage
 
 
@@ -46,6 +47,10 @@ def edit_version(session: Session, cv_version_id: int, sections: dict[str, Any])
     referenced by a submitted application must stay byte-stable forever."""
     original = get_version_or_404(session, cv_version_id)
     sections = validate_sections(session, sections)
+    # A manual edit preserves this version's presentation, not mutable defaults.
+    sections["preferences"] = CVPreferences.model_validate(
+        original.sections.get("preferences", {})
+    ).model_dump()
     # Every CV writer uses the parent job as its first lock. Generations and
     # edits can then allocate from the same monotonically increasing sequence.
     get_job_or_404(session, original.job_id, for_update=True)
