@@ -125,3 +125,7 @@ Two things in the current design are what keep that option cheap rather than a r
 | Inspect failures | `jq -r 'select(.result=="failure")' var/logs/oscar-api.jsonl` |
 | Backup now | see §5 |
 | Full reset (**destructive**) | `docker compose down -v && rm -rf var/storage/*` — confirm backups first |
+
+## Authorized Tencent installation (2026-11-09)
+
+The operator subsequently authorized a separate VPS runtime. See [24_TENCENT_VPS.md](24_TENCENT_VPS.md) for the current HTTPS prefix, shared PostgreSQL, resource and credential contract. Earlier local-only instructions remain the development/pilot profile.

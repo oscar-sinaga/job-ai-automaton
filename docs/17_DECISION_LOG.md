@@ -266,3 +266,7 @@ Career facts and JD text are sent to OpenAI (ADR-025; [11_SECURITY_PRIVACY](11_S
 
 ### OPEN-6 — Production hosting
 Not needed for V1 ([14_DEPLOYMENT_PLAN](14_DEPLOYMENT_PLAN.md) §7). Becomes live if OPEN-1 resolves to D, and would require revising [11_SECURITY_PRIVACY](11_SECURITY_PRIVACY.md) §3 first.
+
+## Tencent deployment authorization — 2026-11-09
+
+Operator requested current local work be committed, combined with upstream changes, and installed alongside Decision Engine on the existing VPS. Decision: preserve PostgreSQL/core containers, use dedicated database/role, serve the personal workspace under an ACC-owner-protected HTTPS prefix, bound DB pools and container resources, and retain approved provider credentials only in the root-private VPS env file. See [24_TENCENT_VPS.md](24_TENCENT_VPS.md). No automatic migration of private laptop data or simulation-provider fallback.

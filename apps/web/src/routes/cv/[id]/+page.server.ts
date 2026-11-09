@@ -1,3 +1,4 @@
+import { appPath } from '$lib/app-path';
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { ApiError, apiFetch } from '$lib/server/api';
@@ -39,7 +40,7 @@ export const actions: Actions = {
 				error: e instanceof ApiError ? e.message : 'Could not update the CV from your profile.'
 			});
 		}
-		redirect(303, `/cv/${updated.id}`);
+		redirect(303, appPath(`/cv/${updated.id}`));
 	},
 	// Removing a bullet is a manual edit -- creates a NEW version (ADR-014);
 	// the version being viewed never mutates, so this redirects to the new one.
@@ -76,7 +77,7 @@ export const actions: Actions = {
 				error: e instanceof ApiError ? e.message : 'Edit failed.'
 			});
 		}
-		throw redirect(303, `/cv/${updated.id}`);
+		throw redirect(303, appPath(`/cv/${updated.id}`));
 	},
 
 	approve: async ({ params, request }) => {

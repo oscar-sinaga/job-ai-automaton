@@ -92,3 +92,7 @@ The append-only event tables ([04_DATA_MODEL](04_DATA_MODEL.md) §6) double as t
 ## 9. Non-Goals (V1)
 
 No multi-user RBAC · no at-rest encryption beyond OS-level disk encryption · no SSO · no audit log shipping · no intrusion detection · no secrets manager (`.env` is sufficient for a single local user). Each is disproportionate to a single-user local tool, and each becomes required if OPEN-1 resolves toward hosting the application publicly.
+
+## Tencent owner access (2026-11-09)
+
+For the operator-authorized VPS profile, see [24_TENCENT_VPS.md](24_TENCENT_VPS.md). ACC administrator authentication protects the single-user web UI; API clients retain their separate shared client key. The provider key and database credentials are root-only VPS env files, excluded from images and Git. PostgreSQL has no published host port. The local-first threat model above is extended to authenticated internet access on HTTPS 443.

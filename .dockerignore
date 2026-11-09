@@ -15,3 +15,7 @@
 **/playwright-report
 var
 backups
+
+.private
+**/.private
+artifacts

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { appPath } from '$lib/app-path';
+
 	import { enhance } from '$app/forms';
 	import type { PageProps } from './$types';
 
@@ -47,7 +49,7 @@
 </script>
 
 <div class="max-w-3xl">
-	<a href="/jobs" class="text-sm text-slate-500 underline underline-offset-2">← Job Inbox</a>
+	<a href={appPath(`/jobs`)} class="text-sm text-slate-500 underline underline-offset-2">← Job Inbox</a>
 
 	<div class="mt-2 flex items-center gap-3">
 		<h1 class="text-xl font-semibold text-slate-900">
@@ -64,7 +66,7 @@
 	{#if data.job.duplicate_of_job_id}
 		<p class="mt-2 rounded bg-amber-50 px-3 py-2 text-sm text-amber-800">
 			Possible duplicate of <a
-				href="/jobs/{data.job.duplicate_of_job_id}"
+				href={appPath(`/jobs/${data.job.duplicate_of_job_id}`)}
 				class="underline underline-offset-2">job #{data.job.duplicate_of_job_id}</a
 			>.
 		</p>
@@ -123,7 +125,7 @@
 		<ul class="mt-2 divide-y divide-slate-100">
 			{#each data.cvVersions as version (version.id)}
 				<li class="flex items-center justify-between py-2 text-sm">
-					<a href="/cv/{version.id}" class="underline underline-offset-2">
+					<a href={appPath(`/cv/${version.id}`)} class="underline underline-offset-2">
 						CV_{data.job.ref}_v{version.version_number}
 					</a>
 					{#if version.is_submitted}

@@ -219,3 +219,7 @@ Web dan API dipublikasikan pada loopback komputer lokal. Database tidak memiliki
 port host. Akses HP memerlukan setup privat/HTTPS pada
 [09_MOBILE_CAPTURE_DESIGN.md](09_MOBILE_CAPTURE_DESIGN.md). Runtime ini tidak
 menyediakan hosting publik atau login multiuser.
+
+## Profil VPS terpisah
+
+Pemasangan Tencent yang diizinkan operator dijelaskan di [24_TENCENT_VPS.md](24_TENCENT_VPS.md). Gunakan entry point produksi langsung, bukan helper pilot lokal atau provider simulasi. Kredensial dan runtime VPS tidak bergantung pada Windows.

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { appPath } from '$lib/app-path';
+
 	import { enhance } from '$app/forms';
 	import type { PageProps } from './$types';
 
@@ -6,7 +8,7 @@
 </script>
 
 <div class="max-w-3xl">
-	<a href="/jobs/{data.cv.job_id}" class="text-sm text-slate-500 underline underline-offset-2"
+	<a href={appPath(`/jobs/${data.cv.job_id}`)} class="text-sm text-slate-500 underline underline-offset-2"
 		>← Job Detail</a
 	>
 
@@ -28,14 +30,14 @@
 		<p class="mt-3 rounded bg-emerald-50 px-3 py-2 text-sm text-emerald-700">Done.</p>
 	{/if}
 	{#if form && 'downloadUrl' in form && form.downloadUrl}
-		<a href={form.downloadUrl} download class="mt-3 inline-block rounded bg-emerald-700 px-4 py-2 text-sm text-white">Download PDF</a>
+		<a href={appPath(form.downloadUrl)} download class="mt-3 inline-block rounded bg-emerald-700 px-4 py-2 text-sm text-white">Download PDF</a>
 	{/if}
 
 	<section class="mt-6 rounded border border-slate-200 bg-white p-4">
 		<h2 class="text-sm font-semibold text-slate-900">CV contact details</h2>
 		<p class="mt-2 text-sm">{data.cv.sections.candidate?.name ?? 'Name not set'} · {data.cv.sections.candidate?.email ?? 'Email not set'}</p>
 		{#if data.cv.sections.candidate?.location}<p class="text-sm text-slate-500">{data.cv.sections.candidate.location}</p>{/if}
-		<p class="mt-2 text-xs text-slate-500">Edit contact details in <a href="/career-profile" class="underline">Career Profile</a>, then update this CV to save a new version.</p>
+		<p class="mt-2 text-xs text-slate-500">Edit contact details in <a href={appPath(`/career-profile`)} class="underline">Career Profile</a>, then update this CV to save a new version.</p>
 		<form method="post" action="?/refreshProfile" use:enhance class="mt-2">
 			<button class="text-xs underline" type="submit">Update CV from profile</button>
 		</form>

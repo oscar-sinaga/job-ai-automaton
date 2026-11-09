@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { appPath } from '$lib/app-path';
+
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -21,7 +23,7 @@
 				</p>
 			{/if}
 		</div>
-		<a href="/jobs/{data.capture.job_id}" class="mt-4 inline-block text-sm underline underline-offset-2"
+		<a href={appPath(`/jobs/${data.capture.job_id}`)} class="mt-4 inline-block text-sm underline underline-offset-2"
 			>Open job →</a
 		>
 	{:else}
@@ -30,7 +32,7 @@
 			<p class="mt-1 text-sm text-red-800">{data.message}</p>
 		</div>
 	{/if}
-	<a href="/jobs" class="mt-4 block text-sm text-slate-500 underline underline-offset-2"
+	<a href={appPath(`/jobs`)} class="mt-4 block text-sm text-slate-500 underline underline-offset-2"
 		>← Job Inbox</a
 	>
 </div>

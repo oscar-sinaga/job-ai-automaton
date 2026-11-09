@@ -1,3 +1,4 @@
+import { appPath } from '$lib/app-path';
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { ApiError, apiFetch } from '$lib/server/api';
@@ -103,7 +104,7 @@ export const actions: Actions = {
 			}
 			return fail(502, { error: 'CV generation failed.' });
 		}
-		throw redirect(303, `/cv/${result.cv_version_id}`);
+		throw redirect(303, appPath(`/cv/${result.cv_version_id}`));
 	},
 
 	// FR-008: one-click status actions. "Mark as Applied" creates the

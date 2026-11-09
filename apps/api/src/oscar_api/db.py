@@ -30,6 +30,8 @@ _settings = get_settings()
 
 engine: Engine = create_engine(
     _settings.database_url,
+    pool_size=_settings.database_pool_size,
+    max_overflow=_settings.database_max_overflow,
     pool_pre_ping=True,  # a laptop that slept mid-session leaves dead connections behind
     future=True,
 )

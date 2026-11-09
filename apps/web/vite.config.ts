@@ -7,6 +7,7 @@ export default defineConfig({
 	plugins: [
 		tailwindcss(),
 		sveltekit({
+            paths: { base: (process.env.OSCAR_BASE_PATH ?? '') as '' | `/${string}`, relative: false },
 			compilerOptions: {
 				// Force runes mode for the project, except for libraries. Can be removed in svelte 6.
 				runes: ({ filename }) => filename.split(/[/\\]/).includes('node_modules') ? undefined : true

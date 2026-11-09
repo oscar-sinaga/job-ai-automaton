@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { appPath } from '$lib/app-path';
+
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -34,7 +36,7 @@
 			<ul class="mt-2 space-y-1">
 				{#each data.dashboard.action_queue as item (item.label)}
 					<li class="text-sm">
-						<a href={item.href} class="text-amber-900 underline underline-offset-2">
+						<a href={appPath(item.href)} class="text-amber-900 underline underline-offset-2">
 							{item.count} {item.label}
 						</a>
 					</li>
@@ -133,7 +135,7 @@
 		</div>
 	</section>
 
-	<a href="/analytics" class="inline-block text-sm text-slate-600 underline underline-offset-2">
+	<a href={appPath(`/analytics`)} class="inline-block text-sm text-slate-600 underline underline-offset-2">
 		Full analytics: trends, sources, roles →
 	</a>
 </div>

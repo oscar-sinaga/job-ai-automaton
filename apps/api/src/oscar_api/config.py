@@ -32,6 +32,9 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+psycopg://oscar:oscar@127.0.0.1:5432/oscar"
 
+    database_pool_size: int = Field(default=3, ge=1, le=5)
+    database_max_overflow: int = Field(default=1, ge=0, le=3)
+
     # Shared secret for web/extension/mobile clients (docs/03 §4, ADR-002).
     # Empty is tolerated only so that Milestone 0 runs before a .env exists;
     # from M1, request auth depends on it and an empty value rejects every write.

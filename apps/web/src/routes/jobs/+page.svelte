@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { appPath } from '$lib/app-path';
+
 	import { enhance } from '$app/forms';
 	import type { PageProps } from './$types';
 
@@ -142,7 +144,7 @@
 			Filter
 		</button>
 		{#if data.hasFilters}
-			<a href="/jobs" class="text-sm text-slate-600 underline underline-offset-2">Clear filters</a>
+			<a href={appPath(`/jobs`)} class="text-sm text-slate-600 underline underline-offset-2">Clear filters</a>
 		{/if}
 	</form>
 	{#if data.retainedFilters.some(filter => filter.name !== 'limit')}
@@ -170,7 +172,7 @@
 				{#each data.jobs.items as job (job.id)}
 					<tr class="border-b border-slate-100 last:border-0 hover:bg-slate-50">
 						<td class="px-3 py-2">
-							<a href="/jobs/{job.id}" class="font-medium text-slate-900 underline underline-offset-2"
+							<a href={appPath(`/jobs/${job.id}`)} class="font-medium text-slate-900 underline underline-offset-2"
 								>{job.ref}</a
 							>
 							{#if job.is_duplicate}
