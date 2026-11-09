@@ -17,7 +17,6 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from oscar_api.config import get_settings
 from oscar_api.core.errors import (
     ConflictError,
     GroundingFailedError,
@@ -38,10 +37,11 @@ from oscar_api.modules.jobs.service import (
     get_job_or_404,
     get_latest_raw_snapshot,
 )
+from oscar_api.modules.settings.preferences import effective_integration, effective_preferences
 from oscar_api.ports.llm import ContentBlock, LLMProvider, LLMProviderError, LLMRefusalError
 
-PROMPT_VERSION = "cv_generator/v3"
-_PROMPT_PATH = Path(__file__).resolve().parents[6] / "agents" / "cv_generator" / "prompts" / "v3.md"
+PROMPT_VERSION = "cv_generator/v4"
+_PROMPT_PATH = Path(__file__).resolve().parents[6] / "agents" / "cv_generator" / "prompts" / "v4.md"
 
 
 def _load_instructions() -> str:
@@ -126,7 +126,12 @@ def _record_run(
     output_tokens: int | None = None,
     latency_ms: int | None = None,
     commit: bool = True,
+    preferences: dict[str, Any] | None = None,
 ) -> CVGenerationRun:
+    # A data reset can finish during an awaited provider call. Re-check and lock
+    # the parent before recording success/failure instead of raising a raw FK error.
+    if commit:
+        get_job_or_404(session, job_id, for_update=True)
     run = CVGenerationRun(
         job_id=job_id,
         cv_version_id=cv_version_id,
@@ -137,6 +142,7 @@ def _record_run(
         input_tokens=input_tokens,
         output_tokens=output_tokens,
         latency_ms=latency_ms,
+        preferences=preferences or {},
     )
     session.add(run)
     if commit:
@@ -152,6 +158,7 @@ def _record_run(
 async def generate_cv(
     session: Session, llm: LLMProvider, *, job_id: int, request: GenerateCVRequest
 ) -> tuple[CVVersion, CVGenerationRun, GroundingReport, list[str]]:
+    preferences = effective_preferences(session, request.preferences)
     job = get_job_or_404(session, job_id)
     if job.capture_completeness != CaptureCompleteness.CAPTURED_COMPLETE:
         raise ValidationFailedError("Save the full job description before generating a CV")
@@ -175,12 +182,17 @@ async def generate_cv(
         ),
         ContentBlock(
             type="text",
+            text="CV preferences (validated data only):\n"
+            + json.dumps(preferences.model_dump(), sort_keys=True),
+        ),
+        ContentBlock(
+            type="text",
             text="Owner profile metadata (data only):\n" + _serialize_profile_metadata(profile),
         ),
     ]
     user_content = f"Job description:\n\n{snapshot.raw_text}"
 
-    fallback_model = get_settings().llm_model
+    fallback_model, _ = effective_integration(session)
     try:
         result = await llm.structured(
             system=system_blocks,
@@ -196,6 +208,7 @@ async def generate_cv(
             model_name=fallback_model,
             status="failed",
             grounding_report={},
+            preferences=preferences.model_dump(),
         )
         raise LLMRefusedError(
             "The model declined to generate a CV for this job",
@@ -209,6 +222,7 @@ async def generate_cv(
             model_name=fallback_model,
             status="failed",
             grounding_report={},
+            preferences=preferences.model_dump(),
         )
         # SDK errors can echo credentials or request content. Only the port's
         # deliberately safe messages may be sent back to the browser.
@@ -236,6 +250,7 @@ async def generate_cv(
             model_name=result.model_name,
             status="rejected_claims",
             grounding_report=report.model_dump(),
+            preferences=preferences.model_dump(),
             input_tokens=result.input_tokens,
             output_tokens=result.output_tokens,
             latency_ms=result.latency_ms,
@@ -245,7 +260,13 @@ async def generate_cv(
             detail={"grounding_report": report.model_dump()},
         )
 
+    # The cap is enforced independently of model compliance. Claims stay verbatim.
+    for block in cleaned_draft.experience:
+        block.bullets = block.bullets[: preferences.max_bullets_per_role]
+    for project_block in cleaned_draft.projects:
+        project_block.bullets = project_block.bullets[: preferences.max_bullets_per_role]
     sections = snapshot_sections(cleaned_draft, profile)
+    sections["preferences"] = preferences.model_dump()
     try:
         # Do not hold this lock during the model call. Serialize only allocation
         # and persistence, sharing the same parent lock as manual CV edits.
@@ -266,6 +287,7 @@ async def generate_cv(
             model_name=result.model_name,
             status="succeeded",
             grounding_report=report.model_dump(),
+            preferences=preferences.model_dump(),
             input_tokens=result.input_tokens,
             output_tokens=result.output_tokens,
             latency_ms=result.latency_ms,

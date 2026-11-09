@@ -2,6 +2,9 @@
 
 import importlib.util
 import io
+import json
+import os
+import subprocess
 import sys
 import tarfile
 from pathlib import Path
@@ -28,7 +31,29 @@ def test_hidden_key_setup_preserves_app_key_without_printing_provider_key(
     assert after["OPENAI_API_KEY"] == key
     assert after["OSCAR_API_KEY"] == before["OSCAR_API_KEY"]
     assert after["POSTGRES_PASSWORD"] == before["POSTGRES_PASSWORD"]
-    assert env.stat().st_mode & 0o777 == 0o600
+    if os.name == "nt":
+        # POSIX mode bits do not describe Windows access; inspect the real DACL.
+        script = r"""
+        $acl = Get-Acl -LiteralPath $env:OSCAR_PRIVATE_CONFIG_TARGET
+        $sid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+        $access = @($acl.Access | Where-Object AccessControlType -eq Allow)
+        $sidType = [System.Security.Principal.SecurityIdentifier]
+        $onlyUser = $access.Count -eq 1 -and
+          $access[0].IdentityReference.Translate($sidType).Value -eq $sid
+        @{ Protected = $acl.AreAccessRulesProtected; OnlyCurrentUser = $onlyUser } | ConvertTo-Json
+        """
+        environment = os.environ.copy()
+        environment["OSCAR_PRIVATE_CONFIG_TARGET"] = str(env)
+        protection = json.loads(
+            subprocess.check_output(
+                ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script],
+                env=environment,
+                text=True,
+            )
+        )
+        assert protection == {"Protected": True, "OnlyCurrentUser": True}
+    else:
+        assert env.stat().st_mode & 0o777 == 0o600
     assert key not in capsys.readouterr().out
 
 
@@ -72,7 +97,10 @@ def test_configuration_owns_compose_values_without_losing_system_environment(mon
 
 def test_literal_configuration_handles_bom_comments_and_quotes(tmp_path):
     env = tmp_path / "synthetic.cfg"
-    env.write_text("\ufeff # comment\nexport OSCAR_ENV = \"local\"\nOPENAI_API_KEY='fixture'\n")
+    env.write_text(
+        "\ufeff # comment\nexport OSCAR_ENV = \"local\"\nOPENAI_API_KEY='fixture'\n",
+        encoding="utf-8",
+    )
     assert pilot.read_configuration(env) == {"OSCAR_ENV": "local", "OPENAI_API_KEY": "fixture"}
 
 

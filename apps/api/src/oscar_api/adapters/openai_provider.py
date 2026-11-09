@@ -33,7 +33,7 @@ from oscar_api.ports.llm import ContentBlock, LLMProviderError, LLMRefusalError,
 
 
 class OpenAILLMProvider:
-    def __init__(self, model: str | None = None) -> None:
+    def __init__(self, model: str | None = None, max_output_tokens: int | None = None) -> None:
         settings = get_settings()
         if not settings.openai_api_key:
             raise RuntimeError("OPENAI_API_KEY is not configured")
@@ -41,7 +41,7 @@ class OpenAILLMProvider:
         # can otherwise exceed the UI's timeout and issue extra paid calls.
         self._client = AsyncOpenAI(api_key=settings.openai_api_key, max_retries=0)
         self._model = model or settings.llm_model
-        self._max_output_tokens = settings.llm_max_output_tokens
+        self._max_output_tokens = max_output_tokens or settings.llm_max_output_tokens
 
     async def aclose(self) -> None:
         await self._client.close()

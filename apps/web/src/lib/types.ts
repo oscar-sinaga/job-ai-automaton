@@ -178,6 +178,7 @@ export interface DraftBlock {
 }
 
 export interface CVSections {
+	preferences?: import('./settings').CVPreferences;
 	summary: DraftBullet;
 	experience: DraftBlock[];
 	projects: DraftBlock[];

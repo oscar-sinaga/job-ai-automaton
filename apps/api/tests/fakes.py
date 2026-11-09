@@ -73,3 +73,9 @@ class InMemoryStorage:
 
     def load(self, uri: str) -> bytes:
         return self.saved[uri.removeprefix("memory://")]
+
+    def iter_load(self, uri: str):
+        yield self.load(uri)
+
+    def delete(self, uri: str) -> None:
+        self.saved.pop(uri.removeprefix("memory://"), None)

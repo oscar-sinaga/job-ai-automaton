@@ -6,10 +6,15 @@ see docs/05_API_DESIGN.md for the full planned surface and docs/15 for sequencin
 
 from __future__ import annotations
 
+import threading
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from oscar_api.adapters.local_storage import LocalFileStorage
 from oscar_api.config import get_settings
 from oscar_api.core.errors import register_error_handlers
 from oscar_api.db import check_database
@@ -21,13 +26,29 @@ from oscar_api.modules.career.router import router as career_router
 from oscar_api.modules.cv.router import cv_router
 from oscar_api.modules.cv.router import jobs_router as cv_jobs_router
 from oscar_api.modules.jobs.router import router as jobs_router
+from oscar_api.modules.settings.maintenance import cleanup_loop
+from oscar_api.modules.settings.router import router as settings_router
 
 settings = get_settings()
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    stop = threading.Event()
+    worker = threading.Thread(target=cleanup_loop, args=(stop, LocalFileStorage()), daemon=True)
+    worker.start()
+    try:
+        yield
+    finally:
+        stop.set()
+        worker.join(timeout=5)
+
 
 app = FastAPI(
     title="OSCAR Job Copilot API",
     version=settings.version,
     description="Personal job-search operating system. See docs/ for the design pack.",
+    lifespan=lifespan,
 )
 
 register_error_handlers(app)
@@ -39,6 +60,7 @@ app.include_router(applications_jobs_router, prefix="/api/v1")
 app.include_router(dashboard_router, prefix="/api/v1")
 app.include_router(analytics_router, prefix="/api/v1")
 app.include_router(cv_router, prefix="/api/v1")
+app.include_router(settings_router, prefix="/api/v1")
 
 # Explicit allowlist, never "*": any site the user visits could otherwise POST
 # to this local API (docs/11 §3).
