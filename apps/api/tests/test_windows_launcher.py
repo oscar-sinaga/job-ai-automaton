@@ -156,7 +156,8 @@ def test_port_change_preserves_other_values_bom_and_acl(tmp_path):
             acl_diagnostic = @{{
                 same_owner = ($afterAcl.Owner -ceq $beforeAcl.Owner)
                 same_group = ($afterAcl.Group -ceq $beforeAcl.Group)
-                same_protection = ($afterAcl.AreAccessRulesProtected -eq $beforeAcl.AreAccessRulesProtected)
+                same_protection = ($afterAcl.AreAccessRulesProtected -eq
+                    $beforeAcl.AreAccessRulesProtected)
                 same_rules = ($afterRules -ceq $beforeRules)
                 same_descriptor = ($beforeAcl.GetSecurityDescriptorSddlForm($sections) -ceq
                     $afterAcl.GetSecurityDescriptorSddlForm($sections))
