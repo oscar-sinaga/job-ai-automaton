@@ -23,6 +23,16 @@
 	function completenessLabel(value: string): string {
 		return value.replace('CAPTURED_', '').replace('_', ' ');
 	}
+
+	function additionalFilterLabel(name: string, value: string): string {
+		if (name === 'completeness') return `Capture: ${completenessLabel(value)}`;
+		if (name === 'older_than') return `Saved more than ${value.replace(/d$/, '')} days ago`;
+		const enabled = ['1', 'true'].includes(value.toLowerCase());
+		if (name === 'missing_cv') return enabled ? 'Without a CV' : 'Any CV state';
+		if (name === 'needs_description') return enabled ? 'Needs full description' : 'Any description state';
+		if (name === 'exclude_duplicates') return enabled ? 'Duplicates excluded' : 'Duplicates included';
+		return enabled ? 'Needs follow-up' : 'Any follow-up state';
+	}
 </script>
 
 <div class="max-w-5xl">
@@ -89,6 +99,9 @@
 
 	<!-- Filters -->
 	<form method="get" class="mt-6 flex flex-wrap items-end gap-3">
+		{#each data.retainedFilters as filter (filter.name)}
+			<input type="hidden" name={filter.name} value={filter.value} />
+		{/each}
 		<div>
 			<label for="status" class="block text-xs font-medium text-slate-600">Status</label>
 			<select
@@ -128,7 +141,16 @@
 		>
 			Filter
 		</button>
+		{#if data.hasFilters}
+			<a href="/jobs" class="text-sm text-slate-600 underline underline-offset-2">Clear filters</a>
+		{/if}
 	</form>
+	{#if data.retainedFilters.some(filter => filter.name !== 'limit')}
+		<p class="mt-2 text-xs text-slate-500">
+			Additional filters:
+			{data.retainedFilters.filter(filter => filter.name !== 'limit').map(filter => additionalFilterLabel(filter.name, filter.value)).join(' · ')}
+		</p>
+	{/if}
 
 	<!-- Job list -->
 	<div class="mt-4 overflow-x-auto rounded border border-slate-200 bg-white">
@@ -181,7 +203,7 @@
 				{:else}
 					<tr>
 						<td colspan="7" class="px-3 py-6 text-center text-slate-500">
-							No jobs yet. Save one above.
+							{data.hasFilters ? 'No jobs match these filters.' : 'No jobs yet. Save one above.'}
 						</td>
 					</tr>
 				{/each}
@@ -189,9 +211,9 @@
 		</table>
 	</div>
 
-	{#if data.jobs.next_cursor}
+	{#if data.nextHref}
 		<a
-			href="?cursor={data.jobs.next_cursor}"
+			href={data.nextHref}
 			class="mt-3 inline-block text-sm text-slate-600 underline underline-offset-2"
 		>
 			Next page →

@@ -6,6 +6,7 @@ import type {
 	CVVersionSummary,
 	GenerateCVResponse,
 	JobDetail,
+	JobEventOut,
 	RawSnapshotOut
 } from '$lib/types';
 
@@ -20,14 +21,17 @@ export const load: PageServerLoad = async ({ params }) => {
 		throw e;
 	}
 
-	const raw = await apiFetch<RawSnapshotOut>(`/jobs/${params.id}/raw`).catch(() => null);
-	const cvVersions = await apiFetch<CVVersionSummary[]>(`/jobs/${params.id}/cv-versions`).catch(
-		() => []
-	);
-	const application = await apiFetch<ApplicationOut | null>(
-		`/jobs/${params.id}/application`
-	).catch(() => null);
-	return { job, raw, cvVersions, application };
+	let timelineUnavailable = false;
+	const [raw, cvVersions, application, timeline] = await Promise.all([
+		apiFetch<RawSnapshotOut>(`/jobs/${params.id}/raw`).catch(() => null),
+		apiFetch<CVVersionSummary[]>(`/jobs/${params.id}/cv-versions`).catch(() => []),
+		apiFetch<ApplicationOut | null>(`/jobs/${params.id}/application`).catch(() => null),
+		apiFetch<JobEventOut[]>(`/jobs/${params.id}/timeline`).catch(() => {
+			timelineUnavailable = true;
+			return job.events;
+		})
+	]);
+	return { job, raw, cvVersions, application, timeline, timelineUnavailable };
 };
 
 async function run(fn: () => Promise<unknown>) {
@@ -42,8 +46,8 @@ async function run(fn: () => Promise<unknown>) {
 }
 
 export const actions: Actions = {
-	// Upgrades a NEEDS_ENRICHMENT / CAPTURED_PARTIAL job once the full JD is
-	// available (docs/09 §4) -- adds a snapshot, never edits the first one.
+	// Both initial enrichment and later corrections append a snapshot.
+	// Previously saved descriptions and CV versions are never edited here.
 	enrich: async ({ request, params }) => {
 		const data = await request.formData();
 		const rawText = data.get('raw_text')?.toString().trim();
@@ -62,7 +66,7 @@ export const actions: Actions = {
 		} catch (e) {
 			return fail(502, { error: e instanceof ApiError ? e.message : 'Enrichment failed.' });
 		}
-		return { success: true };
+		return { success: true, descriptionSaved: true };
 	},
 
 	correct: async ({ request, params }) => {

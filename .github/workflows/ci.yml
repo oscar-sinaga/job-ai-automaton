@@ -73,6 +73,9 @@ jobs:
       - run: npm run check
       - run: npm run build
 
+      - name: Verify job workflow against the production Node server
+        run: node ../../scripts/web/test-job-workflow.mjs
+
   browser-simulation:
     runs-on: ubuntu-24.04
     timeout-minutes: 12

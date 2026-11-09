@@ -3,7 +3,10 @@ import type { Actions, PageServerLoad } from './$types';
 import { ApiError, apiFetch } from '$lib/server/api';
 import type { JobList } from '$lib/types';
 
-const FILTER_KEYS = ['status', 'source', 'q', 'cursor'] as const;
+const FILTER_KEYS = [
+	'status', 'source', 'q', 'completeness', 'older_than', 'missing_cv', 'needs_action',
+	'needs_description', 'exclude_duplicates', 'limit', 'cursor'
+] as const;
 
 export const load: PageServerLoad = async ({ url }) => {
 	const params = new URLSearchParams();
@@ -14,11 +17,19 @@ export const load: PageServerLoad = async ({ url }) => {
 
 	const query = params.toString();
 	const jobs = await apiFetch<JobList>(`/jobs${query ? `?${query}` : ''}`);
+	const retainedFilters = [...params.entries()]
+		.filter(([key]) => !['status', 'source', 'q', 'cursor'].includes(key))
+		.map(([name, value]) => ({ name, value }));
+	const nextParams = new URLSearchParams(params);
+	if (jobs.next_cursor) nextParams.set('cursor', jobs.next_cursor);
 	return {
 		jobs,
 		status: url.searchParams.get('status') ?? '',
 		source: url.searchParams.get('source') ?? '',
-		q: url.searchParams.get('q') ?? ''
+		q: url.searchParams.get('q') ?? '',
+		retainedFilters,
+		hasFilters: [...params.keys()].some(key => !['cursor', 'limit'].includes(key)),
+		nextHref: jobs.next_cursor ? `?${nextParams}` : null
 	};
 };
 

@@ -27,6 +27,7 @@ from oscar_api.modules.applications.schemas import (
     ApplicationOut,
 )
 from oscar_api.modules.jobs.models import Job
+from oscar_api.modules.jobs.schemas import JobEventOut
 
 router = APIRouter(
     prefix="/applications", tags=["applications"], dependencies=[Depends(require_api_key)]
@@ -34,6 +35,19 @@ router = APIRouter(
 jobs_router = APIRouter(
     prefix="/jobs", tags=["applications"], dependencies=[Depends(require_api_key)]
 )
+
+
+@jobs_router.get("/{job_id}/timeline", response_model=list[JobEventOut])
+def get_job_timeline(job_id: int, session: Session = Depends(get_session)) -> list[JobEventOut]:
+    return [
+        JobEventOut(
+            event_type=event.event_type,
+            actor=event.actor,
+            metadata=event.event_metadata,
+            occurred_at=event.occurred_at,
+        )
+        for event in service.timeline_events(session, job_id)
+    ]
 
 
 def _to_out(application: Application, job: Job) -> ApplicationOut:

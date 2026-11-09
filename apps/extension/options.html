@@ -57,10 +57,12 @@
 			>API base URL
 			<input id="apiBaseUrl" placeholder="http://127.0.0.1:8000/api/v1" />
 		</label>
+		<p class="hint">Use the API server, not the dashboard. Windows launcher: http://127.0.0.1:8001/api/v1. Docker default: http://127.0.0.1:8000/api/v1.</p>
 		<label
 			>API key
 			<input id="apiKey" type="password" />
 		</label>
+		<p class="hint">Use OSCAR_API_KEY from .env.pilot. Keep the OpenAI provider key out of this extension.</p>
 		<button id="save" type="button">Save</button>
 		<p id="status"></p>
 		<script type="module" src="./options.js"></script>

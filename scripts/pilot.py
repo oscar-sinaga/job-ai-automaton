@@ -8,6 +8,7 @@ import getpass
 import hashlib
 import json
 import os
+import re
 import secrets
 import subprocess
 import tarfile
@@ -79,13 +80,50 @@ def validate_application_key(value: str) -> None:
         )
 
 
-def backup(compose: list[str], directory: Path, database: str) -> None:
+def read_configuration(env_file: Path) -> dict[str, str]:
+    """Read literal values without inheriting shell substitutions or printing secrets."""
+    values: dict[str, str] = {}
+    for line in env_file.read_text(encoding="utf-8-sig").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("export "):
+            line = line[7:].lstrip()
+        name, separator, value = line.partition("=")
+        name, value = name.strip(), value.strip()
+        if not separator or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name):
+            raise ValueError("The configuration contains an invalid assignment.")
+        if value[:1] in {"'", '"'}:
+            if len(value) < 2 or value[-1] != value[0]:
+                raise ValueError("The configuration contains an unmatched quote.")
+            value = value[1:-1]
+        if "\0" in value:
+            raise ValueError("The configuration contains an invalid value.")
+        values[name] = value
+    return values
+
+
+def compose_environment(values: dict[str, str]) -> dict[str, str]:
+    """The selected file owns app settings; retain PATH, proxies and Docker access."""
+
+    def managed(name: str) -> bool:
+        return name.upper().startswith(("OSCAR_", "POSTGRES_")) or name.upper() == "OPENAI_API_KEY"
+
+    environment = {name: value for name, value in os.environ.items() if not managed(name)}
+    environment.update({name: value for name, value in values.items() if managed(name)})
+    return environment
+
+
+def backup(
+    compose: list[str], directory: Path, database: str, *, environment: dict[str, str]
+) -> None:
     directory.mkdir(mode=0o700, parents=True, exist_ok=False)
     with (directory / "database.dump").open("wb") as output:
         subprocess.run(
             [*compose, "exec", "-T", "db", "pg_dump", "-U", "oscar", "-Fc", database],
             stdout=output,
             check=True,
+            env=environment,
         )
     with (directory / "pdfs.tar.gz").open("wb") as output:
         subprocess.run(
@@ -99,6 +137,7 @@ def backup(compose: list[str], directory: Path, database: str) -> None:
             ],
             stdout=output,
             check=True,
+            env=environment,
         )
     manifest = {
         "version": 1,
@@ -109,7 +148,7 @@ def backup(compose: list[str], directory: Path, database: str) -> None:
     print(f"Backup complete: {directory}")
 
 
-def verify_backup(compose: list[str], directory: Path) -> None:
+def verify_backup(compose: list[str], directory: Path, *, environment: dict[str, str]) -> None:
     manifest = json.loads((directory / "manifest.json").read_text())
     if manifest.get("version") != 1:
         raise ValueError("Unsupported backup format")
@@ -119,7 +158,11 @@ def verify_backup(compose: list[str], directory: Path) -> None:
             raise ValueError(f"Backup checksum failed for {name}")
 
     database = f"oscar_restore_check_{secrets.token_hex(8)}"
-    subprocess.run([*compose, "exec", "-T", "db", "createdb", "-U", "oscar", database], check=True)
+    subprocess.run(
+        [*compose, "exec", "-T", "db", "createdb", "-U", "oscar", database],
+        check=True,
+        env=environment,
+    )
     try:
         with (directory / "database.dump").open("rb") as source:
             subprocess.run(
@@ -138,6 +181,7 @@ def verify_backup(compose: list[str], directory: Path) -> None:
                 ],
                 stdin=source,
                 check=True,
+                env=environment,
             )
         count = subprocess.check_output(
             [
@@ -155,6 +199,7 @@ def verify_backup(compose: list[str], directory: Path) -> None:
                 "SELECT count(*) FROM jobs",
             ],
             text=True,
+            env=environment,
         ).strip()
         with tempfile.TemporaryDirectory(prefix="oscar-pdf-restore-") as temporary:
             with tarfile.open(directory / "pdfs.tar.gz", "r:gz") as archive:
@@ -170,6 +215,7 @@ def verify_backup(compose: list[str], directory: Path) -> None:
         subprocess.run(
             [*compose, "exec", "-T", "db", "dropdb", "-U", "oscar", database],
             check=True,
+            env=environment,
         )
 
 
@@ -198,11 +244,10 @@ def main() -> None:
         return
     if not env_file.is_file():
         parser.error("Run init with the same mode before using this command.")
-    values = dict(
-        line.split("=", 1)
-        for line in env_file.read_text().splitlines()
-        if line.strip() and not line.startswith("#")
-    )
+    try:
+        values = read_configuration(env_file)
+    except ValueError as error:
+        parser.error(str(error))
     project = "oscar-simulation" if args.simulation else "oscar-pilot"
     expected_mode = "simulation" if args.simulation else "local"
     if values.get("OSCAR_ENV") != expected_mode:
@@ -212,6 +257,7 @@ def main() -> None:
             validate_application_key(values.get("OSCAR_API_KEY", ""))
         except ValueError as error:
             parser.error(str(error))
+    environment = compose_environment(values)
     compose = [
         "docker",
         "compose",
@@ -226,21 +272,22 @@ def main() -> None:
         subprocess.run(
             [*compose, "up", "-d", "--build", "--wait", "--wait-timeout", "180"],
             check=True,
+            env=environment,
         )
         print("OSCAR is ready at http://127.0.0.1:5173")
     elif args.command == "stop":
-        subprocess.run([*compose, "down"], check=True)
+        subprocess.run([*compose, "down"], check=True, env=environment)
         print("Stopped. Database and documents remain in the project volumes.")
     elif args.command == "status":
-        subprocess.run([*compose, "ps"], check=True)
+        subprocess.run([*compose, "ps"], check=True, env=environment)
     elif args.command == "backup":
         stamp = dt.datetime.now(dt.UTC).strftime("%Y%m%dT%H%M%SZ")
         directory = args.directory or ROOT / "backups" / f"{project}-{stamp}-{secrets.token_hex(3)}"
-        backup(compose, directory.resolve(), values["OSCAR_DATABASE_NAME"])
+        backup(compose, directory.resolve(), values["OSCAR_DATABASE_NAME"], environment=environment)
     elif args.command == "verify-backup":
         if not args.directory:
             parser.error("Provide --directory with a backup created by this tool.")
-        verify_backup(compose, args.directory.resolve())
+        verify_backup(compose, args.directory.resolve(), environment=environment)
 
 
 if __name__ == "__main__":

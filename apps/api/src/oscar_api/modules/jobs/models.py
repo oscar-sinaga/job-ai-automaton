@@ -157,7 +157,9 @@ class Job(Base):
     )
 
     snapshots: Mapped[list[JobRawSnapshot]] = relationship(
-        back_populates="job", order_by="JobRawSnapshot.captured_at"
+        # Server ingestion order; client clocks are retained as metadata only.
+        back_populates="job",
+        order_by="JobRawSnapshot.id",
     )
     events: Mapped[list[JobEvent]] = relationship(
         back_populates="job", order_by="JobEvent.occurred_at"

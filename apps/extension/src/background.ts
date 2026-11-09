@@ -3,8 +3,8 @@
 // and content script never see it (docs/08 §6).
 
 import type { CaptureOutcome, ExtractionResult } from './types';
-
-const DEFAULT_API_BASE_URL = 'http://127.0.0.1:8000/api/v1';
+import { captureHttpError, normalizeApiBaseUrl } from './api-config';
+import { isJobstreetHost } from './jobstreet';
 const EXTRACTION_TIMEOUT_MS = 5000;
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -22,7 +22,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 async function getConfig(): Promise<{ apiBaseUrl: string; apiKey: string }> {
 	const stored = await chrome.storage.local.get(['apiBaseUrl', 'apiKey']);
 	return {
-		apiBaseUrl: (stored.apiBaseUrl as string) || DEFAULT_API_BASE_URL,
+		apiBaseUrl: normalizeApiBaseUrl((stored.apiBaseUrl as string) || ''),
 		apiKey: (stored.apiKey as string) || ''
 	};
 }
@@ -72,6 +72,9 @@ async function captureActiveTab(): Promise<CaptureOutcome> {
 	if (!apiKey) {
 		throw new Error('Set the API key in the extension options first');
 	}
+	const hostname = safeHostname(tab.url);
+	const linkedIn = hostname === 'linkedin.com' || hostname?.endsWith('.linkedin.com');
+	const scopedPage = linkedIn || (hostname ? isJobstreetHost(hostname) : false) || !!extraction.pageAccess;
 
 	const response = await fetch(`${apiBaseUrl}/jobs/capture`, {
 		method: 'POST',
@@ -81,15 +84,17 @@ async function captureActiveTab(): Promise<CaptureOutcome> {
 			'Idempotency-Key': crypto.randomUUID()
 		},
 		body: JSON.stringify({
-			url: tab.url,
+			url: extraction.jobUrl ?? tab.url,
 			source_hint: safeHostname(tab.url),
-			page_title: tab.title ?? '',
+			page_title: scopedPage ? extraction.jobTitle ?? '' : tab.title ?? '',
 			job_title: extraction.jobTitle,
 			company_name: extraction.companyName,
 			raw_text: extraction.text || undefined,
 			capture_method: 'extension',
 			captured_at: new Date().toISOString(),
 			metadata: {
+				source_page_url: extraction.jobUrl ? tab.url : undefined,
+				original_page_title: scopedPage ? tab.title : undefined,
 				page_access: extraction.pageAccess,
 				extractor: extraction.extractor,
 				truncated: extraction.truncated,
@@ -103,7 +108,7 @@ async function captureActiveTab(): Promise<CaptureOutcome> {
 
 	const body = await response.json().catch(() => ({}));
 	if (!response.ok) {
-		throw new Error(body.message ?? `Save failed (${response.status})`);
+		throw new Error(captureHttpError(response.status, body.message));
 	}
 
 	return {

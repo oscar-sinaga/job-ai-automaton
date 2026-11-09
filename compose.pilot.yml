@@ -28,7 +28,7 @@ services:
       OSCAR_LLM_MAX_OUTPUT_TOKENS: ${OSCAR_LLM_MAX_OUTPUT_TOKENS:-4096}
       OSCAR_STORAGE_DIR: /data/pdfs
       OSCAR_LOG_DIR: /data/logs
-    ports: ['127.0.0.1:8000:8000']
+    ports: ['127.0.0.1:${OSCAR_API_PORT:-8000}:8000']
     volumes:
       - documents:/data/pdfs
       - logs:/data/logs

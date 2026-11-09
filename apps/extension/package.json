@@ -1,16 +1,19 @@
 {
 	"name": "oscar-extension",
 	"private": true,
-	"version": "0.1.3",
+	"version": "0.1.6",
 	"type": "module",
 	"scripts": {
 		"build": "node build.mjs",
 		"check": "tsc --noEmit",
-		"test:offline": "npm run check && npm run build && node ../../scripts/extension/test-offline.cjs"
+		"test:config": "node ../../scripts/extension/test-api-config.mjs",
+		"test:extract": "node ../../scripts/extension/test-linkedin-capture.mjs && node ../../scripts/extension/test-jobstreet-capture.mjs",
+		"test:offline": "npm run check && npm run test:config && npm run test:extract && npm run build && node ../../scripts/extension/test-offline.cjs"
 	},
 	"devDependencies": {
 		"@types/chrome": "^0.0.287",
 		"esbuild": "^0.28.2",
+		"linkedom": "^0.18.15",
 		"typescript": "^5.7.3"
 	}
 }

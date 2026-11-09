@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import re
+
 from fastapi import APIRouter, Depends, Header, Query, Response
 from sqlalchemy.orm import Session
 
 from oscar_api.core.auth import require_api_key
+from oscar_api.core.errors import ValidationFailedError
 from oscar_api.db import get_session
 from oscar_api.modules.jobs import service
 from oscar_api.modules.jobs.models import CaptureCompleteness, Job, JobStatus
@@ -81,7 +84,9 @@ def capture(
     envelope: CaptureEnvelope,
     response: Response,
     session: Session = Depends(get_session),
-    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+    idempotency_key: str | None = Header(
+        default=None, alias="Idempotency-Key", min_length=1, max_length=64
+    ),
 ) -> CaptureResponse:
     job, snapshot, created = service.capture_job(session, envelope, idempotency_key)
     # A replayed Idempotency-Key returns the original job with 200, not 201
@@ -99,9 +104,14 @@ def capture(
 
 def _parse_older_than(value: str | None) -> int | None:
     """Accepts "5d" (days) as used by the action-queue hrefs (docs/05 §8)."""
-    if not value:
+    if value is None:
         return None
-    return int(value.rstrip("d"))
+    if len(value) > 7 or not re.fullmatch(r"[0-9]+d?", value):
+        raise ValidationFailedError("Use an age filter such as 5d (0 to 36500 days)")
+    days = int(value.removesuffix("d"))
+    if days > 36_500:
+        raise ValidationFailedError("Age filter must be between 0 and 36500 days")
+    return days
 
 
 @router.get("", response_model=JobList)
@@ -113,8 +123,10 @@ def list_jobs(
     older_than: str | None = None,
     missing_cv: bool = False,
     needs_action: bool = False,
-    limit: int = Query(default=50, le=200),
-    cursor: str | None = None,
+    needs_description: bool = False,
+    exclude_duplicates: bool = False,
+    limit: int = Query(default=50, ge=1, le=200),
+    cursor: str | None = Query(default=None, min_length=1, max_length=64),
     session: Session = Depends(get_session),
 ) -> JobList:
     items, next_cursor = service.list_jobs(
@@ -126,6 +138,8 @@ def list_jobs(
         older_than_days=_parse_older_than(older_than),
         missing_cv=missing_cv,
         needs_action=needs_action,
+        needs_description=needs_description,
+        exclude_duplicates=exclude_duplicates,
         limit=limit,
         cursor=cursor,
     )

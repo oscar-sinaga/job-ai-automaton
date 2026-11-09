@@ -18,10 +18,10 @@ class CaptureEnvelope(BaseModel):
     url: str
     captured_at: dt.datetime
     capture_method: CaptureMethod
-    source_hint: str | None = None
+    source_hint: str | None = Field(default=None, max_length=100)
     page_title: str | None = None
     job_title: str | None = Field(default=None, max_length=500)
-    company_name: str | None = Field(default=None, max_length=500)
+    company_name: str | None = Field(default=None, max_length=300)
     raw_text: str | None = None
     selected_text: str | None = None
     shared_text: str | None = None
@@ -115,4 +115,4 @@ class JobPatch(BaseModel):
     with job_parsed_data in M3; only title/company are correctable in M1."""
 
     title: str | None = None
-    company: str | None = None
+    company: str | None = Field(default=None, max_length=300)

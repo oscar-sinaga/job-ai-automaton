@@ -1,4 +1,4 @@
-# OSCAR Job Copilot 0.1.3
+# OSCAR Job Copilot 0.1.6
 
 ## Pasang di Chrome atau Edge
 
@@ -12,18 +12,48 @@
 
 Backend dan database harus berjalan di komputer yang bisa dijangkau browser. Alamat `127.0.0.1` menunjuk ke komputer tempat browser dijalankan. Runner GitHub hanya hidup selama tes dan tidak menyediakan backend permanen.
 
-Paket ini mengizinkan koneksi ke `http://127.0.0.1:8000/*`. Untuk backend dengan domain atau port lain, sesuaikan `host_permissions` di `manifest.json`, muat ulang extension, lalu ubah API base URL di options.
+Paket ini mengizinkan koneksi ke `http://127.0.0.1:8000/*` dan port alternatif
+`http://127.0.0.1:8001/*`. Jika memakai launcher Windows, isi API base URL dengan
+`http://127.0.0.1:8001/api/v1`. Untuk domain atau port lain, sesuaikan
+`host_permissions` di `manifest.json`, muat ulang extension, lalu ubah URL di options.
 
 API key adalah kunci autentikasi backend OSCAR. Fitur capture memakai DOM halaman dan tidak memerlukan API AI. `simulation-only-key` hanya berlaku saat backend dijalankan dengan script simulasi repository.
 
 ## Hasil dan kondisi yang diuji
 
-- Judul dan perusahaan dibaca dari JSON-LD JobPosting atau microdata. Judul memakai heading utama jika metadata tidak tersedia, lalu judul tab sebagai fallback.
+- Pada LinkedIn dan Jobstreet, JD, judul, dan perusahaan dibaca dari panel detail terpilih. Identitas yang tidak cocok atau belum jelas menyimpan tautan saja.
+- Pada situs lain, judul dan perusahaan dibaca dari JSON-LD JobPosting atau microdata. Judul memakai heading utama jika metadata tidak tersedia, lalu judul tab sebagai fallback.
 - Judul tab asli dan teks capture tetap disimpan dalam snapshot.
 - Menyimpan URL yang sama lagi menghasilkan capture baru dengan penanda kemungkinan duplikat, sesuai kontrak aplikasi.
 - Jika API tidak dapat dijangkau, popup menampilkan pesan untuk memeriksa backend dan URL. Tombol Save aktif lagi untuk mencoba ulang.
 
 Jika extension diperbarui, ganti isi folder dengan paket terbaru, klik **Reload** di halaman extensions, lalu muat ulang halaman lowongan.
+
+## LinkedIn dengan daftar lowongan dan panel detail
+
+Capture mengambil deskripsi dari panel detail lowongan yang terbuka, beserta
+judul/perusahaan pada panel yang sama. Daftar rekomendasi, Premium, kontak dan
+sidebar tidak menjadi bagian JD. URL pencarian dengan `currentJobId` disimpan
+sebagai tautan langsung ke job tersebut; URL halaman asal tetap menjadi metadata.
+
+Susunan LinkedIn lama dan susunan baru dengan judul berupa tautan serta bagian
+**About the job** didukung. Jika teks lengkap belum tersedia atau ID di
+panel tidak sesuai URL, extension menyimpan tautan saja. Buka deskripsi lengkap
+dan capture ulang, atau lengkapi JD melalui Job Detail. Snapshot lama tetap
+menjadi riwayat; pembaruan extractor tidak menghapus atau menulis ulang data lama.
+
+## Jobstreet dengan daftar lowongan dan panel detail
+
+Capture hanya membaca elemen deskripsi lowongan, tanpa daftar pencarian,
+insights, employer questions, profil perusahaan, dan rekomendasi. URL selected
+`jobId` pada halaman pencarian disimpan sebagai tautan langsung `/job/<id>`.
+Pada halaman pencarian, ID panel atau tautan judul harus cocok; JSON-LD yang
+cocok URL, judul, dan perusahaan dapat membuktikan identitas panel yang terlihat.
+JSON-LD lowongan lain tidak dipakai sebagai pengganti deskripsi.
+
+Jika situs mengubah struktur atau panel masih berganti, popup memberi tahu bahwa
+capture belum lengkap. Buka halaman detail langsung, tunggu selesai dimuat, lalu
+capture ulang. Snapshot sebelumnya tetap tersimpan sebagai riwayat.
 
 ## Saat halaman meminta verifikasi atau login
 

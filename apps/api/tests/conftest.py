@@ -26,7 +26,6 @@ import pytest
 import pytest_asyncio
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import event
 from sqlalchemy.orm import Session
 
 from fakes import FakeLLMProvider, InMemoryStorage
@@ -51,13 +50,9 @@ def db_session() -> Iterator[Session]:
     inner SAVEPOINT, which is immediately restarted."""
     connection = engine.connect()
     outer_transaction = connection.begin()
-    session = Session(bind=connection)
-    session.begin_nested()
-
-    @event.listens_for(session, "after_transaction_end")
-    def _restart_savepoint(sess: Session, transaction: object) -> None:
-        if transaction.nested and not transaction._parent.nested:  # type: ignore[attr-defined]
-            sess.begin_nested()
+    # SQLAlchemy 2 creates a new savepoint after each service commit/rollback.
+    # A service rollback must not roll back the connection's outer transaction.
+    session = Session(bind=connection, join_transaction_mode="create_savepoint")
 
     try:
         yield session

@@ -146,13 +146,18 @@ select
 
 | Item | Definition | Link target |
 |---|---|---|
-`cv_ready_not_applied` | `cv_ready_at is not null and applied_at is null` | `/jobs?status=READY_TO_APPLY`
-`saved_older_than_5d` | `current_status = 'SAVED' and saved_at < now() - interval '5 days'` | `/jobs?status=SAVED&older_than=5d`
-`jobs_without_cv` | `cv_generated_at is null and current_status in ('SAVED','READY_TO_APPLY')` | `/jobs?missing_cv=1`
+`cv_ready_not_applied` | approved, never applied, and `current_status = 'READY_TO_APPLY'` | `/jobs?status=READY_TO_APPLY`
+`saved_older_than_5d` | `current_status = 'SAVED'` and server `jobs.created_at` older than 5 days | `/jobs?status=SAVED&older_than=5d`
+`jobs_without_cv` | no stored CV version and `current_status in ('SAVED','READY_TO_APPLY')` | `/jobs?missing_cv=1`
 `applications_needing_action` | `current_status in ('ASSESSMENT','INTERVIEW','FINAL_INTERVIEW')` and no event in 7 days | `/jobs?needs_action=1`
-`partial_captures` | `capture_completeness = 'CAPTURED_PARTIAL'` | `/jobs?completeness=CAPTURED_PARTIAL`
+`partial_captures` | `capture_completeness != 'CAPTURED_COMPLETE'` (includes URL-only captures) | `/jobs?needs_description=1`
 
 Each count and its link must return the same set — a mismatch is a bug, and [12_TEST_STRATEGY](12_TEST_STRATEGY.md) requires a test asserting count == length(linked result) for every row here.
+
+All action-queue links additionally send `exclude_duplicates=1`. General inbox
+browsing remains duplicate-inclusive. Job age uses server ingestion time so a
+device clock cannot disagree with the linked age filter. Skipped approved jobs
+leave the ready queue; un-skipping restores readiness when approval exists.
 
 `partial_captures` is added beyond the master spec's list because unenriched mobile captures are the backlog item most likely to rot invisibly ([09_MOBILE_CAPTURE_DESIGN](09_MOBILE_CAPTURE_DESIGN.md) §4).
 

@@ -12,8 +12,10 @@
 import type { ExtractionResult, ExtractorUsed } from './types';
 import { extractJobMetadata } from './job-metadata';
 import { detectPageAccess } from './page-access';
+import { extractLinkedInJob } from './linkedin';
+import { extractJobstreetJob } from './jobstreet';
 
-const MIN_COMPLETE_LENGTH = 400; // mirrors the server's own floor (docs/05 §3)
+const MIN_COMPLETE_LENGTH = 400; // minimum useful block for generic page extraction
 const MAX_CHARS = 200_000; // docs/05 §3: capped, never rejected
 
 function cleanText(text: string): string {
@@ -80,6 +82,7 @@ export function extractGenericJobText(): ExtractionResult {
 	const pageAccess = detectPageAccess();
 	const result: ExtractionResult = pageAccess
 		? { text: '', extractor: 'none', truncated: false, pageAccess }
-		: { ...extractGenericJobText(), ...extractJobMetadata() };
+		: extractLinkedInJob(document, location.href) ?? extractJobstreetJob(document, location.href)
+			?? { ...extractGenericJobText(), ...extractJobMetadata() };
 	chrome.runtime.sendMessage({ type: 'EXTRACTION_RESULT', payload: result });
 })();

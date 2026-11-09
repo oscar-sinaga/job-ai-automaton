@@ -22,7 +22,10 @@ from oscar_api.modules.analytics.schemas import ProductivityOut
 _KPI_SQL = text("""
     SELECT
       count(*) FILTER (WHERE saved_at >= :win_from AND saved_at < :win_to) AS saved,
-      count(*) FILTER (WHERE cv_ready_at IS NOT NULL AND applied_at IS NULL) AS ready_to_apply,
+      count(*) FILTER (
+        WHERE cv_ready_at IS NOT NULL AND applied_at IS NULL
+          AND current_status = 'READY_TO_APPLY'
+      ) AS ready_to_apply,
       count(*) FILTER (WHERE applied_at >= :win_from AND applied_at < :win_to) AS applied,
       count(*) FILTER (WHERE assessment_at >= :win_from AND assessment_at < :win_to) AS assessment,
       count(*) FILTER (WHERE interview_at >= :win_from AND interview_at < :win_to) AS interview,
@@ -72,12 +75,17 @@ _BACKLOG_SQL = text("""
     SELECT
       count(*) FILTER (
         WHERE cv_ready_at IS NOT NULL AND applied_at IS NULL
+          AND current_status = 'READY_TO_APPLY'
       ) AS cv_ready_not_applied,
       count(*) FILTER (
-        WHERE current_status = 'SAVED' AND saved_at < now() - interval '5 days'
+        WHERE current_status = 'SAVED' AND job_id IN (
+          SELECT id FROM jobs WHERE created_at < now() - interval '5 days'
+        )
       ) AS saved_older_than_5d,
       count(*) FILTER (
-        WHERE cv_generated_at IS NULL AND current_status IN ('SAVED', 'READY_TO_APPLY')
+        WHERE current_status IN ('SAVED', 'READY_TO_APPLY') AND NOT EXISTS (
+          SELECT 1 FROM cv_versions WHERE cv_versions.job_id = v_job_stages.job_id
+        )
       ) AS jobs_without_cv,
       count(*) FILTER (
         WHERE current_status IN ('ASSESSMENT', 'INTERVIEW', 'FINAL_INTERVIEW')
@@ -91,7 +99,7 @@ _BACKLOG_SQL = text("""
 
 _PARTIAL_CAPTURES_SQL = text("""
     SELECT count(*) AS n FROM jobs
-    WHERE capture_completeness = 'CAPTURED_PARTIAL' AND duplicate_of_job_id IS NULL
+    WHERE capture_completeness != 'CAPTURED_COMPLETE' AND duplicate_of_job_id IS NULL
 """)
 
 _TRENDS_SQL = text("""
@@ -164,7 +172,10 @@ _PRODUCTIVITY_SQL = text("""
         ORDER BY extract(epoch FROM (applied_at - saved_at)) / 86400.0
       ) FILTER (WHERE applied_at IS NOT NULL) AS median_saved_to_applied_days,
       count(*) FILTER (WHERE applied_at >= now() - interval '7 days') AS applications_last_7d,
-      count(*) FILTER (WHERE cv_ready_at IS NOT NULL AND applied_at IS NULL) AS backlog_size
+      count(*) FILTER (
+        WHERE cv_ready_at IS NOT NULL AND applied_at IS NULL
+          AND current_status = 'READY_TO_APPLY'
+      ) AS backlog_size
     FROM v_job_stages
 """)
 
@@ -225,11 +236,13 @@ def get_action_queue(session: Session) -> list[dict[str, Any]]:
         (
             "Partial captures needing enrichment",
             backlog["partial_captures"],
-            "/jobs?completeness=CAPTURED_PARTIAL",
+            "/jobs?needs_description=1",
         ),
     ]
     return [
-        {"label": label, "count": count, "href": href} for label, count, href in items if count > 0
+        {"label": label, "count": count, "href": href + "&exclude_duplicates=1"}
+        for label, count, href in items
+        if count > 0
     ]
 
 

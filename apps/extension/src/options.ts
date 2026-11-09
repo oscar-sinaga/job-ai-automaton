@@ -1,4 +1,4 @@
-const DEFAULT_API_BASE_URL = 'http://127.0.0.1:8000/api/v1';
+import { DEFAULT_API_BASE_URL, normalizeApiBaseUrl } from './api-config';
 
 const baseUrlInput = document.getElementById('apiBaseUrl') as HTMLInputElement;
 const apiKeyInput = document.getElementById('apiKey') as HTMLInputElement;
@@ -10,14 +10,18 @@ chrome.storage.local.get(['apiBaseUrl', 'apiKey']).then((stored) => {
 	apiKeyInput.value = (stored.apiKey as string) || '';
 });
 
-saveButton.addEventListener('click', () => {
-	chrome.storage.local
-		.set({
-			apiBaseUrl: baseUrlInput.value.trim() || DEFAULT_API_BASE_URL,
+saveButton.addEventListener('click', async () => {
+	try {
+		const apiBaseUrl = normalizeApiBaseUrl(baseUrlInput.value);
+		await chrome.storage.local.set({
+			apiBaseUrl,
 			apiKey: apiKeyInput.value.trim()
-		})
-		.then(() => {
-			statusEl.textContent = 'Saved.';
-			setTimeout(() => (statusEl.textContent = ''), 2000);
 		});
+		baseUrlInput.value = apiBaseUrl;
+		statusEl.style.color = '#059669';
+		statusEl.textContent = 'Saved.';
+	} catch (error) {
+		statusEl.style.color = '#b91c1c';
+		statusEl.textContent = error instanceof Error ? error.message : 'Could not save settings.';
+	}
 });

@@ -14,10 +14,12 @@ from pathlib import Path
 from typing import Any
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from oscar_api.config import get_settings
 from oscar_api.core.errors import (
+    ConflictError,
     GroundingFailedError,
     LLMRefusedError,
     LLMUnavailableError,
@@ -31,7 +33,11 @@ from oscar_api.modules.cv.retrieval import retrieve_facts
 from oscar_api.modules.cv.schemas import CVDraft, GenerateCVRequest, GroundingReport
 from oscar_api.modules.cv.sections import assign_source_parents, snapshot_sections
 from oscar_api.modules.jobs.models import CaptureCompleteness, JobEvent, JobEventType
-from oscar_api.modules.jobs.service import get_job_or_404
+from oscar_api.modules.jobs.service import (
+    MIN_COMPLETE_TEXT_CHARS,
+    get_job_or_404,
+    get_latest_raw_snapshot,
+)
 from oscar_api.ports.llm import ContentBlock, LLMProvider, LLMProviderError, LLMRefusalError
 
 PROMPT_VERSION = "cv_generator/v3"
@@ -119,6 +125,7 @@ def _record_run(
     input_tokens: int | None = None,
     output_tokens: int | None = None,
     latency_ms: int | None = None,
+    commit: bool = True,
 ) -> CVGenerationRun:
     run = CVGenerationRun(
         job_id=job_id,
@@ -132,8 +139,13 @@ def _record_run(
         latency_ms=latency_ms,
     )
     session.add(run)
-    session.commit()
-    session.refresh(run)
+    if commit:
+        try:
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
+        session.refresh(run)
     return run
 
 
@@ -143,10 +155,8 @@ async def generate_cv(
     job = get_job_or_404(session, job_id)
     if job.capture_completeness != CaptureCompleteness.CAPTURED_COMPLETE:
         raise ValidationFailedError("Save the full job description before generating a CV")
-    if not job.snapshots:
-        raise ValidationFailedError("Job has no raw snapshot to generate a CV from")
-    snapshot = job.snapshots[-1]
-    if not snapshot.raw_text:
+    snapshot = get_latest_raw_snapshot(session, job_id)
+    if not snapshot.raw_text or len(snapshot.raw_text.strip()) < MIN_COMPLETE_TEXT_CHARS:
         raise ValidationFailedError(
             "Job has no job-description text yet (capture is still partial)"
         )
@@ -235,36 +245,47 @@ async def generate_cv(
             detail={"grounding_report": report.model_dump()},
         )
 
-    cv_version = CVVersion(
-        job_id=job_id,
-        version_number=_next_version_number(session, job_id),
-        summary_text=cleaned_draft.summary.text or None,
-        sections=snapshot_sections(cleaned_draft, profile),
-        is_submitted=False,
-    )
-    session.add(cv_version)
-    session.flush()
-
-    run = _record_run(
-        session,
-        job_id=job_id,
-        cv_version_id=cv_version.id,
-        model_name=result.model_name,
-        status="succeeded",
-        grounding_report=report.model_dump(),
-        input_tokens=result.input_tokens,
-        output_tokens=result.output_tokens,
-        latency_ms=result.latency_ms,
-    )
-    session.add(
-        JobEvent(
+    sections = snapshot_sections(cleaned_draft, profile)
+    try:
+        # Do not hold this lock during the model call. Serialize only allocation
+        # and persistence, sharing the same parent lock as manual CV edits.
+        get_job_or_404(session, job_id, for_update=True)
+        cv_version = CVVersion(
             job_id=job_id,
-            event_type=JobEventType.CV_GENERATED.value,
-            actor="system",
-            event_metadata={"cv_version_id": cv_version.id},
-            occurred_at=dt.datetime.now(dt.UTC),
+            version_number=_next_version_number(session, job_id),
+            summary_text=cleaned_draft.summary.text or None,
+            sections=sections,
+            is_submitted=False,
         )
-    )
-    session.commit()
+        session.add(cv_version)
+        session.flush()
+        run = _record_run(
+            session,
+            job_id=job_id,
+            cv_version_id=cv_version.id,
+            model_name=result.model_name,
+            status="succeeded",
+            grounding_report=report.model_dump(),
+            input_tokens=result.input_tokens,
+            output_tokens=result.output_tokens,
+            latency_ms=result.latency_ms,
+            commit=False,
+        )
+        session.add(
+            JobEvent(
+                job_id=job_id,
+                event_type=JobEventType.CV_GENERATED.value,
+                actor="system",
+                event_metadata={"cv_version_id": cv_version.id},
+                occurred_at=dt.datetime.now(dt.UTC),
+            )
+        )
+        session.commit()
+    except IntegrityError as exc:
+        session.rollback()
+        raise ConflictError("Could not save the generated CV version; retry generation") from exc
+    except Exception:
+        session.rollback()
+        raise
     session.refresh(cv_version)
     return cv_version, run, report, cleaned_draft.missing_requirements

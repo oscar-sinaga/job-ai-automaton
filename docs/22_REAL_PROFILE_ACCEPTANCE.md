@@ -5,7 +5,60 @@ previously supplied LinkedIn profile for real-provider testing. Personal profile
 records, PDFs, database dumps and full generation payloads remain private and are
 not committed to this public repository.
 
-## Verified sample
+## Windows PC acceptance — 5 November 2026
+
+The owner selected the available local resume by delegation and explicitly
+authorized sending its professional history, education, skills and projects to
+OpenAI. Name, email, phone and contact links were removed from extraction input;
+the actual generation serializers were also checked for those contact values.
+Contacts were added to the local CV snapshot only after generation.
+
+The normal local pilot now contains 3 source-backed experiences, 3 projects,
+21 achievement statements, 11 skills and 1 education record from that resume.
+Every statement matches complete original source lines ending in sentence
+punctuation, within its employer/project's bounded source span. Skills match
+literal token boundaries. Private validation records bind the source and
+extracted-file hashes. Repeating the additive import created zero duplicates
+and retained existing records and contact preferences. Numeric verification
+here means checked against the owner's source CV, not independent confirmation
+of the outcomes claimed by the owner.
+
+One previously captured Jobstreet vacancy was used for a real-provider run.
+The production web generation action called the normal API/provider and
+redirected to CV review. All 11 selected statements matched their cited facts
+and correct source parents. The verifier performed 18 checks and rejected one
+unsupported skill, which was dropped from the saved CV. The surviving output
+was reviewed against the imported source; no paid retry was needed.
+
+Two provider calls were made using `gpt-6-luna`, with no automatic retries:
+
+| Purpose | Input tokens | Output tokens | Latency |
+| --- | ---: | ---: | ---: |
+| Private source extraction | 2,300 | 2,241 | 20,957 ms |
+| CV generation, `cv_generator/v3` | 4,340 | 900 | 13,909 ms |
+
+The missing-review checkbox returned 400 and unapproved export returned 409.
+After source review and approval through the production web action, PDF export
+and download succeeded. The result is one selectable-text A4 page, 27,203 bytes;
+all 11 selected statements and the local contact snapshot are present. Geometry
+checks and an anonymized layout inspection found no clipping or page-boundary
+defects. Re-export returned the same artifact and identical bytes.
+
+A private backup containing the profile and PDF was restored successfully to
+a disposable database. After the normal Windows launcher stopped and restarted
+Docker, profile/CV hashes, downloaded PDF bytes, and the full database/document
+fingerprints remained identical. API/database health and the review page were
+reachable from Windows. No application was created or CV marked submitted by
+this acceptance run. Private artifacts remain excluded from Git and Docker
+build contexts under `var/` and `backups/`.
+
+This closes the local real-profile-to-PDF/restart acceptance gap recorded in
+the November 4 audit. It does not replace final live LinkedIn 0.1.6 acceptance
+in the owner's Edge, validate current vacancy availability, or verify the
+independent truth of the owner's career claims. Existing browser desktop/mobile
+tests remain separate synthetic evidence.
+
+## Earlier verified sample — 3 November 2026
 
 The private local pilot imported 6 experiences, 7 projects, 29 career facts,
 25 skills, 2 education records and 4 selected credentials through the application's
@@ -36,8 +89,11 @@ correctly blocked until a full description is supplied. A search listing alone
 was not treated as evidence that the vacancy remained open.
 
 The offline provider also locates the fact block independently of the added
-metadata block; regression tests cover both block orders. Year-only personal
-references retain year-only labels rather than inferred months.
+metadata block; regression tests cover both block orders. Date precision remains
+a limitation: career date fields store full dates and PDF output displays month
+and year. The normal API cannot preserve year-only date precision. Do not infer
+months when importing a source that supplies only a year; omit optional dates
+and retain the original labels privately until precise dates are available.
 
 Local verification: 272 API tests on PostgreSQL; migrations up/down/up; Ruff,
 Mypy, Svelte checks and production web build. Public CI uses synthetic data;

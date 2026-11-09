@@ -2,7 +2,7 @@
 // the API's own schemas (apps/api/.../jobs/schemas.py) -- this is not a shared
 // package, just two small bundles that both need the same shape.
 
-export type ExtractorUsed = 'selection' | 'main' | 'densest_block' | 'body_fallback' | 'none';
+export type ExtractorUsed = 'selection' | 'main' | 'densest_block' | 'body_fallback' | 'linkedin_detail' | 'jobstreet_detail' | 'none';
 
 export interface ExtractionResult {
 	pageAccess?: import('./page-access').PageAccess;
@@ -11,6 +11,7 @@ export interface ExtractionResult {
 	truncated: boolean;
 	jobTitle?: string;
 	companyName?: string;
+	jobUrl?: string;
 }
 
 export interface CaptureOutcome {

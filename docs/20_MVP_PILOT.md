@@ -26,6 +26,41 @@ memerlukan kredensial provider yang valid. Jika belum dikonfigurasi, aplikasi
 memberi pesan bahwa AI belum tersedia. Hasil simulasi tidak otomatis menggantikan
 model pada mode normal.
 
+## Windows dengan Docker di WSL
+
+Jika Docker Engine berjalan di Ubuntu WSL dan port Windows 8000 sudah dipakai
+layanan lain, jalankan dari PowerShell di root repository:
+
+```powershell
+.\scripts\windows\start-pilot.ps1
+```
+
+Launcher menjaga satu sesi WSL di latar belakang selama aplikasi dipakai dan
+mengatur port host API menjadi 8001. Dashboard tetap
+`http://127.0.0.1:5173`; API untuk extension menjadi
+`http://127.0.0.1:8001/api/v1`. Port internal container tetap 8000. Tidak ada
+perubahan pada layanan sistem Windows, firewall, pengaturan WSL global, atau
+startup saat login. Data dan kredensial yang sudah ada dipertahankan.
+Launcher baru melaporkan alamat siap pakai setelah API dari Windows menyatakan
+database sehat dan dashboard merespons. Jika localhost forwarding atau port
+Windows bermasalah, startup melaporkan kegagalan meski container sudah berjalan.
+Port dan distro lain dapat dipilih dengan `-ApiPort 8123 -Distribution Ubuntu-24.04`;
+gunakan distro yang sama saat menjalankan stop.
+
+```powershell
+.\scripts\windows\stop-pilot.ps1
+```
+
+Perintah stop mempertahankan volume. Sesi penjaga WSL hanya dihentikan jika
+prosesnya dapat diverifikasi sebagai helper milik project ini. Untuk Linux atau
+Docker Desktop yang tidak membutuhkan launcher ini, perintah `pilot.py` tetap
+berlaku; port host default 8000 dapat diatur melalui `OSCAR_API_PORT`.
+Catatan PID yang sudah dipakai ulang tidak menghentikan proses lain; launcher
+memulihkan catatan yang terbukti kedaluwarsa. Catatan yang tidak dapat diverifikasi
+dibiarkan untuk pemeriksaan. Semua perintah Compose memakai konfigurasi mode yang
+dipilih dari file privat, termasuk backup dan pemeriksaan restore; environment
+shell tidak menimpa nilai aplikasi, database, atau kunci provider tersebut.
+
 ## Mengaktifkan AI pada mode normal
 
 `OSCAR_API_KEY` adalah kunci akses aplikasi untuk web, extension dan shortcut HP.
@@ -99,9 +134,10 @@ Untuk mode normal, gunakan perintah yang sama tanpa `--simulation`.
 ## Capture dan extension
 
 1. Buka Job Inbox. Simpan URL dan deskripsi lengkap untuk percobaan pertama.
-2. Untuk extension 0.1.3, ekstrak ZIP, buka halaman extensions, aktifkan Developer
+2. Untuk extension 0.1.6, ekstrak ZIP, buka halaman extensions, aktifkan Developer
    mode dan pilih Load unpacked. Panduan lengkap ada di `apps/extension/INSTALL.md`.
-3. API base URL extension adalah `http://127.0.0.1:8000/api/v1`. API key diambil
+3. Gunakan API base URL yang ditampilkan launcher: pada Windows
+   `http://127.0.0.1:8001/api/v1`; default Linux memakai port 8000. API key diambil
    dari `OSCAR_API_KEY` pada file konfigurasi mode yang sedang dijalankan.
 4. Jika halaman portal menampilkan verifikasi/login, URL dapat disimpan untuk
    dilengkapi. Buka job yang sama di OSCAR, tempel deskripsi asli, lalu simpan.
@@ -128,6 +164,14 @@ memakai `gpt-6-luna`: [bukti hasil dan token](../evals/cv_grounding/results/2026
 Pengujian privat dengan profil asli dan tiga lowongan nyata juga sudah lulus
 untuk generasi/review/unduhan PDF; lihat [22_REAL_PROFILE_ACCEPTANCE.md](22_REAL_PROFILE_ACCEPTANCE.md).
 Share dari HP fisik dan lamaran nyata tetap merupakan pemeriksaan pilot.
+
+Pemeriksaan ulang PC Windows pada 4 November 2026, perbaikan 13 temuan audit,
+hasil regresi, dan batas verifikasi terbaru dicatat di
+[23_MVP_BUG_AUDIT.md](23_MVP_BUG_AUDIT.md). Data profil/PDF dari pengujian sebelumnya
+tidak otomatis berpindah ke PC ini. Uji profil asli sampai PDF dan persistensi
+setelah restart pada PC Windows ini sudah lulus pada 5 November 2026; sumber dan
+pemrosesannya diizinkan pemilik. Hasil serta batasnya dicatat di
+[22_REAL_PROFILE_ACCEPTANCE.md](22_REAL_PROFILE_ACCEPTANCE.md).
 
 ## Backup dan pemeriksaan pemulihan
 

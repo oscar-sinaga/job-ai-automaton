@@ -1,0 +1,61 @@
+name: Windows pilot launcher
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/windows/**'
+      - 'scripts/pilot.py'
+      - 'apps/api/tests/test_windows_launcher.py'
+      - 'apps/api/tests/test_windows_keepalive.py'
+      - '.github/workflows/windows-pilot.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/windows/**'
+      - 'scripts/pilot.py'
+      - 'apps/api/tests/test_windows_launcher.py'
+      - 'apps/api/tests/test_windows_keepalive.py'
+      - '.github/workflows/windows-pilot.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-runtime:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows PowerShell launcher
+            os: windows-2022
+            test_file: apps/api/tests/test_windows_launcher.py
+            minimum_checks: 9
+          - name: Linux WSL helper
+            os: ubuntu-24.04
+            test_file: apps/api/tests/test_windows_keepalive.py
+            minimum_checks: 4
+    env:
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install isolated test dependency
+        run: python -m pip install 'pytest>=8.3,<10'
+      - name: Require native Windows PowerShell
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Get-Command powershell.exe -ErrorAction Stop | Out-Null
+      - name: Run native tests without application fixtures
+        run: |
+          python -c "from pathlib import Path; Path('pilot-pytest.ini').write_text('[pytest]\n', encoding='utf-8')"
+          python -m pytest -c pilot-pytest.ini --noconftest -p no:cacheprovider ${{ matrix.test_file }} -q --junitxml=pilot-runtime.xml
+      - name: Reject skipped native coverage
+        run: |
+          python -c "import xml.etree.ElementTree as ET; suite=ET.parse('pilot-runtime.xml').getroot().find('testsuite'); assert int(suite.attrib['tests']) >= ${{ matrix.minimum_checks }}; assert int(suite.attrib['skipped']) == 0"

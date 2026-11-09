@@ -70,33 +70,43 @@
 		</p>
 	{/if}
 
-	{#if needsEnrichment}
-		<section class="mt-4 rounded border border-amber-200 bg-amber-50 p-4">
-			<h2 class="text-sm font-semibold text-amber-900">
-				Job description not saved yet ({data.job.capture_completeness.replace('_', ' ')})
-			</h2>
+	<section class="mt-4 rounded border p-4 {needsEnrichment ? 'border-amber-200 bg-amber-50' : 'border-slate-200 bg-white'}">
+		<h2 class="text-sm font-semibold {needsEnrichment ? 'text-amber-900' : 'text-slate-900'}">
+			{needsEnrichment ? `Job description not saved yet (${data.job.capture_completeness.replace('_', ' ')})` : 'Correct job description'}
+		</h2>
+		{#if needsEnrichment}
 			<p class="mt-1 text-xs text-amber-800">
 				The link is saved. If the original page asks you to sign in or verify your browser,
 				open it normally, then paste the full job description below to continue.
 			</p>
-			<form method="post" action="?/enrich" use:enhance class="mt-3 space-y-2">
-				<textarea
-					name="raw_text"
-					rows="8"
-					required
-					class="w-full rounded border border-slate-300 px-3 py-1.5 text-sm"
-					placeholder="Paste the full job description here…"
-				></textarea>
-				<button
-					type="submit"
-					class="rounded bg-slate-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
-				>
-					Save description
-				</button>
-				{#if form?.error}<p class="text-sm text-red-600">{form.error}</p>{/if}
-			</form>
-		</section>
-	{/if}
+		{:else}
+			<p class="mt-1 text-xs text-slate-600">
+				Paste the complete, corrected description to save a new snapshot. Earlier descriptions and
+				existing CV versions are preserved. Future CV generation uses the new description.
+			</p>
+		{/if}
+		<form method="post" action="?/enrich" use:enhance class="mt-3 space-y-2">
+			<label for="corrected-description" class="block text-xs font-medium text-slate-600">Job description text</label>
+			<textarea
+				id="corrected-description"
+				name="raw_text"
+				rows="8"
+				required
+				class="w-full rounded border border-slate-300 px-3 py-1.5 text-sm"
+				placeholder="Paste the full job description here…"
+			></textarea>
+			<button
+				type="submit"
+				class="rounded bg-slate-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
+			>
+				{needsEnrichment ? 'Save description' : 'Save corrected description'}
+			</button>
+			{#if form?.error}<p class="text-sm text-red-600">{form.error}</p>{/if}
+			{#if form && 'descriptionSaved' in form && form.descriptionSaved}
+				<p class="text-sm text-emerald-700">Description saved as a new snapshot. Earlier descriptions and CV versions are preserved.</p>
+			{/if}
+		</form>
+	</section>
 
 	<section class="mt-6 rounded border border-slate-200 bg-white p-4">
 		<h2 class="text-sm font-semibold text-slate-900">Raw job description</h2>
@@ -246,13 +256,23 @@
 
 	<section class="mt-6 rounded border border-slate-200 bg-white p-4">
 		<h2 class="text-sm font-semibold text-slate-900">Timeline</h2>
+		{#if data.timelineUnavailable}
+			<p class="mt-2 text-sm text-amber-800">Application history could not be loaded. Showing saved-job events; reload to try again.</p>
+		{/if}
 		<ol class="mt-3 space-y-2">
-			{#each data.job.events as event, i (i)}
-				<li class="flex items-center gap-3 text-sm">
-					<span class="w-40 shrink-0 text-slate-400"
-						>{new Date(event.occurred_at).toLocaleString()}</span
-					>
-					<span class="rounded bg-slate-100 px-2 py-0.5 text-xs">{event.event_type}</span>
+			{#each data.timeline as event, i (i)}
+				<li class="text-sm">
+					<div class="flex flex-wrap items-center gap-3">
+						<span class="w-40 shrink-0 text-slate-400">{new Date(event.occurred_at).toLocaleString()}</span>
+						<span class="rounded bg-slate-100 px-2 py-0.5 text-xs">{event.event_type}</span>
+						<span class="text-xs text-slate-500">{event.actor}</span>
+					</div>
+					{#if Object.keys(event.metadata).length}
+						<details class="mt-1 text-xs text-slate-500">
+							<summary class="cursor-pointer">Event details</summary>
+							<code class="mt-1 block whitespace-pre-wrap">{JSON.stringify(event.metadata, null, 2)}</code>
+						</details>
+					{/if}
 				</li>
 			{/each}
 		</ol>

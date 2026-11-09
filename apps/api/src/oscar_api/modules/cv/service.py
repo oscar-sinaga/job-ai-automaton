@@ -12,13 +12,15 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from oscar_api.core.errors import ConflictError, NotFoundError, StorageError, ValidationFailedError
+from oscar_api.modules.applications.models import Application
 from oscar_api.modules.career.service import get_profile
 from oscar_api.modules.cv.grounding import GroundingContext, verify_draft
 from oscar_api.modules.cv.models import CVArtifact, CVVersion
 from oscar_api.modules.cv.pdf import render_pdf
 from oscar_api.modules.cv.schemas import CVDraft
 from oscar_api.modules.cv.sections import snapshot_sections
-from oscar_api.modules.jobs.models import Job, JobEvent, JobEventType, JobStatus
+from oscar_api.modules.jobs.models import JobEvent, JobEventType, JobStatus
+from oscar_api.modules.jobs.service import get_job_or_404
 from oscar_api.ports.storage import Storage
 
 
@@ -44,6 +46,9 @@ def edit_version(session: Session, cv_version_id: int, sections: dict[str, Any])
     referenced by a submitted application must stay byte-stable forever."""
     original = get_version_or_404(session, cv_version_id)
     sections = validate_sections(session, sections)
+    # Every CV writer uses the parent job as its first lock. Generations and
+    # edits can then allocate from the same monotonically increasing sequence.
+    get_job_or_404(session, original.job_id, for_update=True)
     latest_number = (
         session.execute(
             select(CVVersion.version_number)
@@ -71,7 +76,14 @@ def edit_version(session: Session, cv_version_id: int, sections: dict[str, Any])
             occurred_at=dt.datetime.now(dt.UTC),
         )
     )
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError as exc:
+        session.rollback()
+        raise ConflictError("Could not save this CV version; retry the edit") from exc
+    except Exception:
+        session.rollback()
+        raise
     session.refresh(new_version)
     return new_version
 
@@ -120,27 +132,26 @@ def is_approved(session: Session, version: CVVersion) -> bool:
 
 def approve_version(session: Session, cv_version_id: int) -> CVVersion:
     version = get_version_or_404(session, cv_version_id)
-    job = session.get(Job, version.job_id)
-    if job is None:
-        raise NotFoundError(f"Job {version.job_id} not found")
-
-    validate_sections(session, version.sections)
-    if is_approved(session, version):
-        return version
-    # Approval records review of this version. It must never rewind an
-    # application, resurrect a skipped job, or erase a terminal outcome.
-    if job.current_status == JobStatus.SAVED:
-        job.current_status = JobStatus.READY_TO_APPLY
-    session.add(
-        JobEvent(
-            job_id=job.id,
-            event_type=JobEventType.CV_APPROVED.value,
-            actor="user",
-            event_metadata={"cv_version_id": version.id},
-            occurred_at=dt.datetime.now(dt.UTC),
-        )
-    )
-    session.commit()
+    job = get_job_or_404(session, version.job_id, for_update=True)
+    try:
+        validate_sections(session, version.sections)
+        if not is_approved(session, version):
+            # The locked, refreshed status includes any concurrent application.
+            if job.current_status == JobStatus.SAVED:
+                job.current_status = JobStatus.READY_TO_APPLY
+            session.add(
+                JobEvent(
+                    job_id=job.id,
+                    event_type=JobEventType.CV_APPROVED.value,
+                    actor="user",
+                    event_metadata={"cv_version_id": version.id},
+                    occurred_at=dt.datetime.now(dt.UTC),
+                )
+            )
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
     session.refresh(version)
     return version
 
@@ -206,16 +217,29 @@ def download_artifact(
 
 def mark_submitted(session: Session, cv_version_id: int) -> CVVersion:
     version = get_version_or_404(session, cv_version_id)
-    session.execute(
-        update(CVVersion)
-        .where(CVVersion.job_id == version.job_id, CVVersion.id != version.id)
-        .values(is_submitted=False)
-    )
-    version.is_submitted = True
+    get_job_or_404(session, version.job_id, for_update=True)
     try:
+        recorded = session.scalars(
+            select(Application.submitted_cv_version_id).where(Application.job_id == version.job_id)
+        ).all()
+        if recorded and any(recorded_id != version.id for recorded_id in recorded):
+            raise ConflictError(
+                "This application's submitted CV is already recorded; it cannot be changed"
+            )
+        # Before an application exists this is a manual submission marker. Once
+        # one exists, only its recorded CV may be marked; history stays immutable.
+        session.execute(
+            update(CVVersion).where(CVVersion.job_id == version.job_id).values(is_submitted=False)
+        )
+        session.execute(
+            update(CVVersion).where(CVVersion.id == version.id).values(is_submitted=True)
+        )
         session.commit()
     except IntegrityError as exc:
         session.rollback()
         raise ConflictError("Could not mark this CV version as submitted") from exc
+    except Exception:
+        session.rollback()
+        raise
     session.refresh(version)
     return version
