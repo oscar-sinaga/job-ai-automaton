@@ -57,3 +57,11 @@ API: 433 passed, 9 Windows-only skips; Ruff and mypy passed. Web Svelte check:
 Deployment evidence, exact revisions, browser results, runtime resources and
 restore results are recorded in the shared operator deployment report. A local
 Docker pass is not a claim that the public VPS deployment is complete.
+
+## GitHub synchronization follow-up
+
+On 2026-11-09 the operator authorized pushing all application/VPS changes.
+The Windows launcher workflow explicitly selects native Windows PowerShell for
+its Windows test process, preventing PowerShell 7 module paths from breaking
+the WinPS 5.1 ACL check. Linux uses Bash. This CI-only change does not alter the
+running Tencent application image or require a service restart.
