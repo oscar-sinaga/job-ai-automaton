@@ -51,7 +51,7 @@ test("settings persist, export real data, and require explicit scoped deletion",
   await page.reload();
   await expect(page.getByLabel("Maximum output tokens")).toHaveValue("2048");
   await expect(page.getByLabel("API base URL")).toHaveValue(
-    "http://127.0.0.1:5173/api/v1",
+    new URL("./api/v1", page.url()).href,
   );
   expect(
     await page.evaluate(
