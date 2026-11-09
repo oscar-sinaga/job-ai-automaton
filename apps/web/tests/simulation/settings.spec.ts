@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 
-test("settings persist, export real data, and require explicit scoped deletion", async ({
+test("settings persist, export real data, and require explicit scoped deletion @data-reset", async ({
   page,
   request,
 }, testInfo) => {
@@ -9,6 +9,10 @@ test("settings persist, export real data, and require explicit scoped deletion",
   const headers = {
     "X-API-Key": process.env.SIMULATION_API_KEY ?? "simulation-only-key",
   };
+  expect(await (await request.get(`${api}/health`)).json()).toMatchObject({
+    env: "simulation",
+    db: "ok",
+  });
   const captured = await request.post(`${api}/api/v1/jobs/capture`, {
     headers,
     data: {
