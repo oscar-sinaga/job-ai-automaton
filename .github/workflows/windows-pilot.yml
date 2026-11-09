@@ -32,12 +32,10 @@ jobs:
         include:
           - name: Windows PowerShell launcher
             os: windows-2022
-            native_shell: powershell
             test_file: apps/api/tests/test_windows_launcher.py
             minimum_checks: 9
           - name: Linux WSL helper
             os: ubuntu-24.04
-            native_shell: bash
             test_file: apps/api/tests/test_windows_keepalive.py
             minimum_checks: 4
     env:
@@ -57,9 +55,16 @@ jobs:
           Get-Command powershell.exe -ErrorAction Stop | Out-Null
           Import-Module Microsoft.PowerShell.Security -ErrorAction Stop
           Get-Command Get-Acl -ErrorAction Stop | Out-Null
-      - name: Run native tests without application fixtures
+      - name: Run native Windows tests without application fixtures
+        if: runner.os == 'Windows'
         # WinPS 5.1 children must inherit the native module path, not PS7's.
-        shell: ${{ matrix.native_shell }}
+        shell: powershell
+        run: |
+          python -c "from pathlib import Path; Path('pilot-pytest.ini').write_text('[pytest]\n', encoding='utf-8')"
+          python -m pytest -c pilot-pytest.ini --noconftest -p no:cacheprovider ${{ matrix.test_file }} -q --junitxml=pilot-runtime.xml
+      - name: Run Linux helper tests without application fixtures
+        if: runner.os == 'Linux'
+        shell: bash
         run: |
           python -c "from pathlib import Path; Path('pilot-pytest.ini').write_text('[pytest]\n', encoding='utf-8')"
           python -m pytest -c pilot-pytest.ini --noconftest -p no:cacheprovider ${{ matrix.test_file }} -q --junitxml=pilot-runtime.xml
