@@ -110,3 +110,7 @@ docs/           The design pack — read this before touching code
 Remaining open decisions in [docs/17_DECISION_LOG.md](docs/17_DECISION_LOG.md) §2 (none currently block anything): OPEN-3 (durable job queue), OPEN-4 (embedding-based retrieval), OPEN-5 (LLM provider data-retention posture — review before sending real career data to OpenAI), OPEN-6 (production hosting).
 
 To actually start using this: set `OPENAI_API_KEY`, populate the career profile with real experience/achievements (`/career-profile`), and run `apps/api/scripts/eval_cv_grounding.py` against its two adversarial cases before trusting CV generation with a real application.
+
+## Replikasi ke server baru
+
+Paket Compose produksi terpisah, pilihan PostgreSQL baru/existing, HTTPS, batas resource, backup dan uji restore: [panduan replikasi](deploy/replica/README.md).

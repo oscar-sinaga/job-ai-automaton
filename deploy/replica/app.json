@@ -1,0 +1,6 @@
+{
+  "kind": "job",
+  "project": "oscar-jobs-replica",
+  "database": "oscar_jobs",
+  "db_user": "job_app"
+}

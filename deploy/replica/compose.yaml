@@ -1,0 +1,321 @@
+{
+  "name": "${REPLICA_PROJECT}",
+  "services": {
+    "db": {
+      "mem_limit": "384m",
+      "memswap_limit": "384m",
+      "cpus": 0.25,
+      "pids_limit": 96,
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "logging": {
+        "driver": "json-file",
+        "options": {
+          "max-size": "5m",
+          "max-file": "2"
+        }
+      },
+      "image": "postgres:17-bookworm@sha256:665dc7b37ac52a17e298511414c21d23ffa4e6a6ef6225b3e5d59c7afb35e994",
+      "profiles": [
+        "database"
+      ],
+      "restart": "unless-stopped",
+      "environment": {
+        "POSTGRES_USER": "${REPLICA_DB_USER}",
+        "POSTGRES_DB": "${REPLICA_DB_NAME}",
+        "POSTGRES_PASSWORD_FILE": "/run/secrets/database_password",
+        "POSTGRES_INITDB_ARGS": "--auth-host=scram-sha-256"
+      },
+      "secrets": [
+        "database_password"
+      ],
+      "volumes": [
+        "database:/var/lib/postgresql/data",
+        "./.private/replica/init.sql:/docker-entrypoint-initdb.d/10-replica.sql:ro"
+      ],
+      "command": [
+        "postgres",
+        "-c",
+        "shared_buffers=64MB",
+        "-c",
+        "max_connections=30",
+        "-c",
+        "work_mem=4MB"
+      ],
+      "networks": [
+        "database"
+      ],
+      "healthcheck": {
+        "test": [
+          "CMD-SHELL",
+          "pg_isready -h 127.0.0.1 -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""
+        ],
+        "interval": "15s",
+        "timeout": "5s",
+        "retries": 8,
+        "start_period": "30s"
+      },
+      "labels": {
+        "acc.kind": "core",
+        "acc.protected": "true"
+      }
+    },
+    "db-tools": {
+      "mem_limit": "256m",
+      "memswap_limit": "256m",
+      "cpus": 0.25,
+      "pids_limit": 96,
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "logging": {
+        "driver": "json-file",
+        "options": {
+          "max-size": "5m",
+          "max-file": "2"
+        }
+      },
+      "image": "postgres:17-bookworm@sha256:665dc7b37ac52a17e298511414c21d23ffa4e6a6ef6225b3e5d59c7afb35e994",
+      "profiles": [
+        "ops"
+      ],
+      "env_file": [
+        {
+          "path": "./.private/replica/database.env",
+          "format": "raw"
+        }
+      ],
+      "networks": [
+        "database",
+        "egress"
+      ],
+      "read_only": true,
+      "cap_drop": [
+        "ALL"
+      ],
+      "tmpfs": [
+        "/tmp:rw,nosuid,noexec,size=16m"
+      ]
+    },
+    "edge": {
+      "mem_limit": "64m",
+      "memswap_limit": "64m",
+      "cpus": 0.1,
+      "pids_limit": 96,
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "logging": {
+        "driver": "json-file",
+        "options": {
+          "max-size": "5m",
+          "max-file": "2"
+        }
+      },
+      "restart": "unless-stopped",
+      "read_only": true,
+      "cap_drop": [
+        "ALL"
+      ],
+      "tmpfs": [
+        "/tmp:rw,nosuid,noexec,size=32m"
+      ],
+      "labels": {
+        "acc.protected": "true",
+        "acc.kind": "always_on"
+      },
+      "image": "nginx:stable-alpine@sha256:583b7f2fce1cdb8da5ad5c39ebd3c33b98b87d493190e548bdee1fa8c619c311",
+      "user": "${REPLICA_OPERATOR_UID}:${REPLICA_OPERATOR_GID}",
+      "command": [
+        "nginx",
+        "-c",
+        "/etc/nginx/replica.conf",
+        "-g",
+        "daemon off;"
+      ],
+      "ports": [
+        "${REPLICA_BIND}"
+      ],
+      "networks": [
+        "frontend"
+      ],
+      "volumes": [
+        "./deploy/replica/nginx.conf:/etc/nginx/replica.conf:ro",
+        "./.private/replica/tls:/tls:ro",
+        "./.private/replica/htpasswd:/etc/nginx/htpasswd:ro"
+      ],
+      "healthcheck": {
+        "test": [
+          "CMD",
+          "wget",
+          "-q",
+          "-O",
+          "/dev/null",
+          "http://127.0.0.1:8081/healthz"
+        ],
+        "interval": "15s",
+        "timeout": "5s",
+        "retries": 8,
+        "start_period": "30s"
+      },
+      "depends_on": {
+        "web": {
+          "condition": "service_healthy"
+        }
+      }
+    },
+    "api": {
+      "mem_limit": "256m",
+      "memswap_limit": "256m",
+      "cpus": 0.4,
+      "pids_limit": 96,
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "logging": {
+        "driver": "json-file",
+        "options": {
+          "max-size": "5m",
+          "max-file": "2"
+        }
+      },
+      "restart": "unless-stopped",
+      "read_only": true,
+      "cap_drop": [
+        "ALL"
+      ],
+      "tmpfs": [
+        "/tmp:rw,nosuid,noexec,size=32m"
+      ],
+      "labels": {
+        "acc.protected": "true",
+        "acc.kind": "always_on"
+      },
+      "image": "${REPLICA_PROJECT}-api:local",
+      "build": {
+        "context": ".",
+        "dockerfile": "apps/api/Dockerfile"
+      },
+      "env_file": [
+        {
+          "path": "./.private/replica/app.env",
+          "format": "raw"
+        }
+      ],
+      "networks": [
+        "frontend",
+        "database",
+        "egress"
+      ],
+      "command": [
+        "python",
+        "-m",
+        "uvicorn",
+        "oscar_api.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+        "--workers",
+        "1",
+        "--no-proxy-headers"
+      ],
+      "healthcheck": {
+        "test": [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/health\",timeout=3)"
+        ],
+        "interval": "15s",
+        "timeout": "5s",
+        "retries": 8,
+        "start_period": "30s"
+      },
+      "volumes": [
+        "documents:/data/pdfs",
+        "app-logs:/data/logs"
+      ]
+    },
+    "web": {
+      "mem_limit": "192m",
+      "memswap_limit": "192m",
+      "cpus": 0.25,
+      "pids_limit": 96,
+      "security_opt": [
+        "no-new-privileges:true"
+      ],
+      "logging": {
+        "driver": "json-file",
+        "options": {
+          "max-size": "5m",
+          "max-file": "2"
+        }
+      },
+      "restart": "unless-stopped",
+      "read_only": true,
+      "cap_drop": [
+        "ALL"
+      ],
+      "tmpfs": [
+        "/tmp:rw,nosuid,noexec,size=32m"
+      ],
+      "labels": {
+        "acc.protected": "true",
+        "acc.kind": "always_on"
+      },
+      "image": "${REPLICA_PROJECT}-web:local",
+      "build": {
+        "context": ".",
+        "dockerfile": "apps/web/Dockerfile",
+        "args": {
+          "OSCAR_BASE_PATH": ""
+        }
+      },
+      "networks": [
+        "frontend"
+      ],
+      "depends_on": {
+        "api": {
+          "condition": "service_healthy"
+        }
+      },
+      "healthcheck": {
+        "test": [
+          "CMD",
+          "node",
+          "-e",
+          "fetch(\"http://127.0.0.1:5173/jobs\").then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+        ],
+        "interval": "15s",
+        "timeout": "5s",
+        "retries": 8,
+        "start_period": "30s"
+      },
+      "env_file": [
+        {
+          "path": "./.private/replica/web.env",
+          "format": "raw"
+        }
+      ]
+    }
+  },
+  "volumes": {
+    "database": {},
+    "documents": {},
+    "app-logs": {}
+  },
+  "networks": {
+    "database": {
+      "internal": true
+    },
+    "frontend": {},
+    "egress": {}
+  },
+  "secrets": {
+    "database_password": {
+      "file": "./.private/replica/database_password"
+    }
+  }
+}

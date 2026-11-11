@@ -36,3 +36,5 @@ Thumbs.db
 # Deployment-only secrets and evidence
 .private/
 artifacts/
+
+backups/replica/

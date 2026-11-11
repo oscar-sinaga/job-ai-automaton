@@ -19,3 +19,7 @@ backups
 .private
 **/.private
 artifacts
+
+.private/
+
+backups/replica/

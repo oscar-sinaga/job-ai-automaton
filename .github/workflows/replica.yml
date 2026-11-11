@@ -1,0 +1,32 @@
+name: Verify portable replica
+on:
+  push:
+    paths: ['deploy/replica/**', 'Dockerfile*', 'apps/api/**', 'apps/web/**', 'backend/**', 'frontend/**', 'acc/**', 'static/**', 'samples/**', 'config/**', 'scheduled_scraping/**', 'requirements*', '.github/workflows/replica.yml']
+  pull_request:
+    paths: ['deploy/replica/**', 'Dockerfile*', 'apps/api/**', 'apps/web/**', 'backend/**', 'frontend/**', 'acc/**', 'static/**', 'samples/**', 'config/**', 'scheduled_scraping/**', 'requirements*', '.github/workflows/replica.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: replica-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+jobs:
+  replica:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Operator security and backup validation
+        run: python deploy/replica/test_manage.py
+      - name: Actual images, database modes, HTTPS and restore
+        env:
+          REPLICA_REQUIRE_CGROUP: '1'
+        run: python deploy/replica/smoke.py --allow-disposable-docker
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: replica-verification
+          path: artifacts/replica-smoke.json
