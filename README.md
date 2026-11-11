@@ -1,5 +1,143 @@
 # OSCAR Job Copilot
 
+<!-- DOCKER-INSTALL-START -->
+
+## Panduan instalasi Docker
+
+Pilih [tanpa Nginx](#instalasi-docker-tanpa-nginx) atau
+[dengan Nginx](#instalasi-docker-dengan-nginx). Panduan ini untuk instalasi baru
+yang mandiri; tidak memerlukan Tencent atau ACC.
+Prasyarat host Linux/Ubuntu 24.04 atau WSL: Git, Docker Engine, plugin Docker
+Compose **2.30+**, Python **3.10+**, dan OpenSSL. Python host hanya menjalankan
+helper; aplikasi dan PostgreSQL berjalan di container. Autentikasi GitHub diperlukan
+untuk clone repo private. Docker Engine tidak dipasang/diubah otomatis oleh helper.
+Di Windows, jalankan perintah Bash dari Ubuntu WSL dan clone di filesystem Linux
+(misalnya `~/projects`), agar permission privat 0700/0600 dapat diterapkan.
+
+```bash
+git clone --branch main https://github.com/oscar-sinaga/job-ai-automaton.git
+cd job-ai-automaton
+docker version
+docker compose version
+python3 --version
+openssl version
+```
+
+Compose di root untuk development berbeda dari paket mandiri ini. `docker-compose.yml` root hanya menjalankan PostgreSQL; `compose.pilot.yml` adalah pilot lokal.
+Paket instalasi memakai `deploy/replica/compose.yaml`; helper memilih profile,
+file env privat, dan override yang benar. JSON pada berkas tersebut valid sebagai YAML.
+Pilih satu mode pada checkout baru. `init` menolak menimpa `.private/replica` existing;
+`up` menolak restart implisit layanan yang sudah aktif. Untuk upgrade existing, audit
+dan backup dahulu; jangan menghapus konfigurasi atau volume agar bisa mengulang init.
+Untuk instalasi kedua pada daemon yang sama, pilih `--project` dan port yang berbeda.
+
+## Instalasi Docker tanpa Nginx
+
+Mode `direct` menjalankan HTTP pada **127.0.0.1 saja**, untuk laptop atau SSH tunnel
+ke server lain. Container Nginx tidak dijalankan dan tidak perlu sertifikat TLS.
+
+```bash
+python3 deploy/replica/manage.py init --proxy direct --origin http://127.0.0.1:5173
+python3 deploy/replica/manage.py check
+python3 deploy/replica/manage.py build
+python3 deploy/replica/manage.py migrate
+python3 deploy/replica/manage.py up
+python3 deploy/replica/manage.py status
+```
+
+Buka **http://127.0.0.1:5173/** pada host yang menjalankan Docker.
+API langsung tersedia di http://127.0.0.1:8001/api/v1.
+Web direct tidak memiliki login gateway Nginx; API tetap memerlukan X-API-Key. Gunakan mesin operator atau SSH tunnel yang berwenang.
+
+Jika Docker berjalan pada server remote, dari laptop jalankan:
+
+```bash
+ssh -N -L 5173:127.0.0.1:5173 -L 8001:127.0.0.1:8001 USER@IP_SERVER
+```
+
+Lalu buka URL 127.0.0.1 yang sama di laptop. Tetap gunakan port lokal yang sama
+agar origin/CORS sesuai. Untuk mengubah port saat init, sesuaikan `--origin`
+dan `--direct-api-port` serta tunnel. Mode ini tidak membuka HTTP ke IP publik;
+akses internet memakai mode HTTPS di bawah atau terminasi TLS yang dikonfigurasi operator.
+
+## Instalasi Docker dengan Nginx
+
+Mode `nginx` menjalankan reverse proxy rootless melalui satu port **HTTPS 443**.
+API, frontend, agent dan PostgreSQL tetap di jaringan Docker tanpa port publik.
+Gunakan checkout baru untuk memilih mode ini; ganti `YOUR_HOST` dengan domain atau
+IP yang tercakup sertifikat, tanpa path. Tidak memerlukan domain berbayar bila
+operator mempunyai sertifikat IP yang sah.
+
+```bash
+python3 deploy/replica/manage.py init --proxy nginx --origin https://YOUR_HOST
+python3 deploy/replica/manage.py check
+python3 deploy/replica/manage.py build
+python3 deploy/replica/manage.py migrate
+# Pasang sertifikat seperti langkah berikut sebelum menjalankan up.
+```
+
+Simpan full certificate chain di `.private/replica/tls/fullchain.pem` dan private
+key di `.private/replica/tls/privkey.pem`. Gunakan sertifikat yang sah untuk host
+tujuan; sertifikat serta auto-renewal diurus operator dan tidak disalin dari Tencent.
+Setup tidak mendaftarkan ACME atau menerima terms pihak ketiga secara otomatis.
+Untuk init oleh user Linux biasa, file harus dapat dibaca UID operator yang sama;
+batasi private key dengan `chmod 600 .private/replica/tls/privkey.pem`.
+Jika init dijalankan root, proxy memakai UID/GID **10001:10001**: ownership
+direktori TLS dan kedua file harus sesuai, key tetap mode 0600.
+
+```bash
+python3 deploy/replica/manage.py up
+python3 deploy/replica/manage.py status
+curl --silent --output /dev/null --write-out "%{http_code}\n" https://YOUR_HOST/jobs
+# Sebelum login, hasil yang diharapkan: 401.
+```
+
+Buka **https://YOUR_HOST/**. Login gateway `oscar` memakai password prompt init; API tetap memerlukan X-API-Key. Perintah curl tanpa autentikasi akan mendapat 401, sehingga gunakan browser untuk pemeriksaan login.
+
+Pada server baru, siapkan akses firewall TCP 443 dan pertahankan akses SSH.
+Beberapa aplikasi pada satu IP tidak bisa masing-masing mengikat 443 bersamaan;
+gabungkan route pada satu reverse proxy atau gunakan IP publik/mesin yang berbeda. Integrasi
+ACC pada Tencent mengikuti registry/guard existing, bukan instalasi standalone ini.
+
+## Database existing, credential dan backup Docker
+
+Untuk memakai PostgreSQL yang sudah ada, tambahkan opsi berikut pada **perintah init
+mode yang dipilih** (bukan menjalankan init kedua):
+
+```text
+--database existing --db-host YOUR_DB_HOST --db-name oscar_jobs --db-user job_app
+```
+
+Buat database/role khusus aplikasi terlebih dahulu; password diminta tersembunyi.
+Existing mode tidak membuat ulang server database atau mengganti volume.
+Gunakan hostname/IP database yang dapat dijangkau container; `127.0.0.1` di dalam
+container menunjuk container itu sendiri.
+Untuk database Docker dalam jaringan private, gunakan tambahan
+`--db-network NETWORK --db-network-owner COMPOSE_PROJECT` dan, hanya bila jaringan
+Docker internal terpercaya itu tidak menyediakan TLS, `--db-sslmode disable`.
+Helper memverifikasi bridge internal, label owner/network dan ID jaringan.
+Untuk koneksi remote defaultnya TLS `require`; lihat opsi CA/verify-full pada
+[panduan replikasi](deploy/replica/README.md).
+
+Job AI dapat dibuka tanpa provider AI; fitur AI memerlukan OPENAI_API_KEY yang diisi privat pada app.env sebelum up. Setup/tes tidak memanggil OpenAI.
+Credential tersimpan di host tujuan pada `.private/replica` (0700), file env (0600),
+dan tidak masuk Git/image. Jangan menaruh secret pada perintah terminal atau README.
+Volume database dan dokumen tetap ada saat container diganti.
+
+```bash
+python3 deploy/replica/manage.py backup
+python3 deploy/replica/manage.py restore-check --backup-dir backups/replica/TIMESTAMP
+```
+
+Ganti TIMESTAMP dengan direktori hasil backup. Restore-check benar-benar mengimpor
+dump ke database sementara terisolasi; tidak menimpa database aplikasi yang aktif.
+Enkripsi/copy backup off-host dan jadwalkan retensi sesuai kebijakan operator.
+Clone source tidak memindahkan data atau credential lama. Jangan memakai `down -v`
+atau `volume prune` pada deployment yang berisi data. Rincian resource, restore,
+healthcheck dan batas pengujian ada di [panduan replikasi](deploy/replica/README.md).
+
+<!-- DOCKER-INSTALL-END -->
+
 A personal job-search operating system: capture jobs in seconds, generate grounded
 tailored CVs from a verified career-fact store (zero fabricated claims), track every
 application and which exact CV version was sent, and see the funnel honestly.
@@ -110,7 +248,3 @@ docs/           The design pack — read this before touching code
 Remaining open decisions in [docs/17_DECISION_LOG.md](docs/17_DECISION_LOG.md) §2 (none currently block anything): OPEN-3 (durable job queue), OPEN-4 (embedding-based retrieval), OPEN-5 (LLM provider data-retention posture — review before sending real career data to OpenAI), OPEN-6 (production hosting).
 
 To actually start using this: set `OPENAI_API_KEY`, populate the career profile with real experience/achievements (`/career-profile`), and run `apps/api/scripts/eval_cv_grounding.py` against its two adversarial cases before trusting CV generation with a real application.
-
-## Replikasi ke server baru
-
-Paket Compose produksi terpisah, pilihan PostgreSQL baru/existing, HTTPS, batas resource, backup dan uji restore: [panduan replikasi](deploy/replica/README.md).

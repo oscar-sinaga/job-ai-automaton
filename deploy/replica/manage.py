@@ -55,12 +55,16 @@ def identifier(value):
     return value
 
 
-def origin_parts(value):
+def origin_parts(value, proxy='nginx'):
     u = urlsplit(value)
-    if (u.scheme != 'https' or not u.hostname or u.username or u.password or u.query
+    if (u.scheme != ('http' if proxy == 'direct' else 'https') or not u.hostname or u.username or u.password or u.query
             or u.fragment or u.path not in ('', '/') or not re.fullmatch(r'[A-Za-z0-9.:-]+', u.netloc)):
-        raise ValueError('Use an HTTPS origin, without credentials or a path')
-    port = u.port or 443
+        raise ValueError('Use the selected mode\'s origin, without credentials or a path')
+    port = u.port or (80 if proxy == 'direct' else 443)
+    if proxy == 'direct':
+        if u.hostname != '127.0.0.1':
+            raise ValueError('Direct HTTP is loopback-only; use an SSH tunnel for remote access')
+        return u, port
     if port != 443 and u.hostname not in ('localhost', '127.0.0.1'):
         raise ValueError('Public replicas use HTTPS port 443')
     return u, port
@@ -86,6 +90,16 @@ def initialize(args):
     if PRIVATE.exists():
         raise ValueError('Private replica directory already exists; nothing was overwritten')
     spec = json.loads((HERE / 'app.json').read_text())
+    proxy = getattr(args, 'proxy', None) or ('none' if spec['kind'] == 'scraper' else 'nginx')
+    if proxy not in ('nginx', 'direct', 'none'):
+        raise ValueError('Unsupported proxy mode')
+    if (spec['kind'] == 'scraper') != (proxy == 'none'):
+        raise ValueError('Scraper uses --proxy none; web apps use --proxy nginx or direct')
+    if args.with_browser and proxy != 'nginx':
+        raise ValueError('Browser/demo gateway requires Nginx mode')
+    if not args.origin:
+        web_port = {'acc': 8080, 'job': 5173, 'decision': 3000, 'scraper': 8443}[spec['kind']]
+        args.origin = f'http://127.0.0.1:{web_port}' if proxy == 'direct' else 'https://localhost:8443'
     project = args.project or spec['project']
     if not re.fullmatch(r'[a-z][a-z0-9-]{2,39}', project):
         raise ValueError('Invalid Compose project name')
@@ -94,7 +108,11 @@ def initialize(args):
         if args.database != 'existing':
             raise ValueError('--db-network is only for existing database mode')
         network = trusted_database_network(args.db_network, getattr(args, 'db_network_owner', None))
-    u, port = origin_parts(args.origin)
+    u, port = origin_parts(args.origin, proxy)
+    requested_api_port = getattr(args, 'direct_api_port', None)
+    api_port = (8002 if spec['kind'] == 'decision' else 8001) if requested_api_port is None else requested_api_port
+    if not 1024 <= api_port <= 65535 or proxy == 'direct' and spec['kind'] in ('job', 'decision') and port == api_port:
+        raise ValueError('Direct API port must be 1024-65535 and different from the web port')
     database = identifier(args.db_name or spec['database'])
     user = identifier(args.db_user or spec['db_user'])
     if spec['kind'] == 'scraper' and user != 'vehicle_scraper':
@@ -107,7 +125,8 @@ def initialize(args):
     password = getpass.getpass('Existing application DB password (hidden): ') if args.database == 'existing' else secrets.token_hex(32)
     if not password or any(c in password for c in '\r\n\0'):
         raise ValueError('Database password is required and must be one line')
-    access_password = getpass.getpass('NEW replica admin/access password (12+ characters, hidden): ')
+    needs_access_password = spec['kind'] in ('acc', 'decision') or spec['kind'] == 'job' and proxy == 'nginx'
+    access_password = getpass.getpass('NEW replica admin/access password (12+ characters, hidden): ') if needs_access_password else secrets.token_hex(24)
     if not 12 <= len(access_password) <= 128:
         raise ValueError('Use a new access password of 12-128 characters')
     if spec['kind'] == 'decision' and len(access_password.encode()) > 72:
@@ -127,6 +146,8 @@ def initialize(args):
         raise ValueError('Existing scraper database needs --db-admin-user for additive schema migration')
     db_env = dict(runtime, PGUSER=owner_user, PGPASSWORD=owner_password)
     compose = dict(REPLICA_PROJECT=project, REPLICA_ORIGIN=args.origin.rstrip('/'),
+                   REPLICA_DIRECT_WEB_PORT=str(port), REPLICA_DIRECT_API_PORT=str(api_port),
+                   REPLICA_DIRECT_API_ORIGIN=f'http://127.0.0.1:{api_port}',
                    REPLICA_OPERATOR_UID=str(os.getuid() or 10001), REPLICA_OPERATOR_GID=str(os.getgid() or 10001),
                    REPLICA_BIND=f'{"127.0.0.1" if u.hostname in ("localhost", "127.0.0.1") else "0.0.0.0"}:{port}:8443',
                    REPLICA_DB_NAME=database, REPLICA_DB_USER=owner_user,
@@ -164,17 +185,19 @@ def initialize(args):
     write_private(PRIVATE / 'compose.env', env_text(compose))
     write_private(PRIVATE / 'database_password', owner_password)
     metadata = dict(kind=spec['kind'], project=project, database_mode=args.database,
-                    database=database, db_user=user, origin=args.origin.rstrip('/'), with_browser=args.with_browser)
+                    database=database, db_user=user, origin=args.origin.rstrip('/'), with_browser=args.with_browser,
+                    proxy=proxy, direct_api_port=api_port)
     if network:
         metadata['database_network'] = network
     write_private(PRIVATE / 'settings.json', json.dumps(metadata, indent=2) + '\n')
     if network:
         write_private(PRIVATE / 'networks.json', json.dumps({'networks': {'database': {
             'external': True, 'internal': False, 'name': network['name']}}}) + '\n')
-    (PRIVATE / 'tls').mkdir(mode=0o700)
-    if os.getuid() == 0:
+    if proxy == 'nginx':
+        (PRIVATE / 'tls').mkdir(mode=0o700)
+    if proxy == 'nginx' and os.getuid() == 0:
         os.chown(PRIVATE / 'tls', 10001, 10001)
-    if spec['kind'] != 'acc':
+    if spec['kind'] == 'job' and proxy == 'nginx':
         hashed = run(['openssl', 'passwd', '-6', '-stdin'], data=access_password.encode()).stdout.decode().strip()
         write_private(PRIVATE / 'htpasswd', 'oscar:' + hashed + '\n')
         if os.getuid() == 0:
@@ -207,6 +230,11 @@ def initialize(args):
             if app['id'] == 'postgresql' and args.database == 'new':
                 app['availability'] = 'ready'
                 app['container'] = project + '-db-1'
+            if proxy == 'direct' and (app.get('kind') in ('demo', 'scheduled') or app['id'] == 'reverse-proxy'):
+                app['availability'] = 'disabled' if app['id'] == 'reverse-proxy' else 'planned'
+                for key in ('container', 'image', 'command', 'healthcheck_command', 'host_port'):
+                    app[key] = None
+                app['environment'] = {}
         write_private(PRIVATE / 'catalog.json', json.dumps(catalogue, indent=2) + '\n')
         write_private(PRIVATE / 'policy.json', (ROOT / 'config/policy.json').read_text())
         (PRIVATE / 'registry').mkdir(mode=0o755)
@@ -220,7 +248,10 @@ def initialize(args):
         for name in ('catalog.json', 'policy.json', 'nginx.conf', 'registry/installed-apps.json'):
             (PRIVATE / name).chmod(0o644)
     print('Created private replica configuration. No existing configuration was replaced.')
-    print('Install TLS fullchain.pem and privkey.pem in .private/replica/tls, then run check/build/migrate/up.')
+    if proxy == 'nginx':
+        print('Install TLS fullchain.pem and privkey.pem in .private/replica/tls, then run check/build/migrate/up.')
+    else:
+        print('Run check/build/migrate/up. Direct web ports bind only to 127.0.0.1; scraper has no web port.')
 
 
 def configuration():
@@ -246,6 +277,11 @@ def command(settings):
            '-p', settings['project'], '-f', str(HERE / 'compose.yaml')]
     if settings['database_mode'] == 'new':
         cmd += ['--profile', 'database']
+    proxy = settings.get('proxy', 'none' if settings['kind'] == 'scraper' else 'nginx')
+    if proxy == 'nginx':
+        cmd += ['--profile', 'nginx']
+    elif proxy == 'direct':
+        cmd += ['-f', str(HERE / 'compose.direct.yaml')]
     if settings.get('database_network'):
         cmd += ['-f', str(PRIVATE / 'networks.json')]
     return cmd
@@ -417,7 +453,9 @@ def restore_check(target):
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('action', choices=['init', 'check', 'build', 'migrate', 'bootstrap-admin', 'up', 'status', 'backup', 'restore-check'])
-    p.add_argument('--origin', default='https://localhost:8443')
+    p.add_argument('--origin')
+    p.add_argument('--proxy', choices=['nginx', 'direct', 'none'])
+    p.add_argument('--direct-api-port', type=int)
     p.add_argument('--project')
     p.add_argument('--database', choices=['new', 'existing'], default='new')
     p.add_argument('--db-host')
@@ -465,14 +503,15 @@ def main():
             raise ValueError('Refusing an implicit restart of existing application containers')
         if not (PRIVATE / 'migration-completed').is_file():
             raise ValueError('Run migrate before starting the application')
-        if settings['kind'] != 'scraper':
+        proxy = settings.get('proxy', 'none' if settings['kind'] == 'scraper' else 'nginx')
+        if proxy == 'nginx':
             for name in ('fullchain.pem', 'privkey.pem'):
                 if not (PRIVATE / 'tls' / name).is_file():
                     raise ValueError('Install TLS certificates before starting HTTPS')
-        if settings['kind'] == 'acc':
+        if settings['kind'] == 'acc' and proxy == 'nginx':
             prepare_acc(cmd, settings)
         run(cmd + ['up', '-d', '--no-build', '--wait', '--wait-timeout', '120'])
-        print('Replica started. Verify HTTPS and authenticated application flows before declaring deployment complete.')
+        print('Replica started. Verify the selected mode and application access before declaring deployment complete.')
     elif args.action == 'status':
         print(run(cmd + ['ps']).stdout.decode(), end='')
     elif args.action == 'backup':

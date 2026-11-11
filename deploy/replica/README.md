@@ -1,5 +1,18 @@
 # Replikasi job-ai-automaton ke host Linux baru
 
+## Memilih mode instalasi
+
+Panduan langkah lengkap ada di README utama:
+[tanpa Nginx](../../README.md#instalasi-docker-tanpa-nginx) dan
+[dengan Nginx](../../README.md#instalasi-docker-dengan-nginx).
+Mode web `--proxy direct` adalah HTTP loopback/SSH tunnel tanpa container Nginx;
+`--proxy nginx` memakai HTTPS dan profile nginx. Worker scraper memakai
+`--proxy none`, tanpa HTTP/TLS. Default web tetap Nginx dan default scraper none.
+Opsi database baru/existing serta backup berlaku pada kedua mode.
+ACC direct menjalankan panel/API; runtime demo/browser/scheduled sample dan
+gateway workspace ditandai tidak aktif sampai mode proxy dipilih.
+
+
 Paket terpisah dari deployment Tencent yang sedang berjalan. Compose pada direktori
 ini memakai sintaks JSON yang valid sebagai YAML. Docker Engine dan Compose 2.30+
 harus sudah tersedia. Ubuntu 24.04/WSL dengan Python 3.10+ dan OpenSSL didukung.
@@ -54,7 +67,7 @@ Sertifikat publik dan auto-renew harus disiapkan operator/ACME sesuai domain/IP 
 sertifikat Tencent tidak dipakai ulang. Reload Nginx setelah sertifikat diperbarui.
 Tanpa domain, sertifikat IP yang sah tetap diperlukan. Self-signed hanya untuk uji lokal.
 
-Hanya edge HTTPS 443 dipublikasikan. API, frontend, agent dan PostgreSQL tidak menerbitkan
+Dalam mode Nginx, hanya edge HTTPS 443 dipublikasikan. API, frontend, agent dan PostgreSQL tidak menerbitkan
 port host. Untuk uji laptop gunakan origin `https://localhost:8443` (bind loopback).
 Jangan menjalankan beberapa edge di IP:443 yang sama. Bila semua aplikasi dipasang pada
 satu server, gunakan satu reverse proxy ACC dan registry workspace yang ada, dengan

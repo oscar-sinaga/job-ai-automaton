@@ -15,6 +15,12 @@ spec.loader.exec_module(m)
 
 
 class ReplicaTests(unittest.TestCase):
+    def test_direct_http_origin_is_canonical_loopback_only(self):
+        self.assertEqual(m.origin_parts('http://127.0.0.1:5173','direct')[1],5173)
+        for value in ('http://0.0.0.0:5173','http://150.109.17.147:5173',
+                      'https://127.0.0.1:5173','http://localhost:5173'):
+            with self.subTest(origin=value), self.assertRaises(ValueError):
+                m.origin_parts(value,'direct')
     def test_database_network_requires_owner_isolation_and_pinned_identity(self):
         network={'Id':'pinned-id','Internal':True,'Driver':'bridge','Scope':'local',
                  'Labels':{'com.docker.compose.project':'db-owner','com.docker.compose.network':'database'}}

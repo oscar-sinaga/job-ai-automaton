@@ -8,12 +8,16 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: replica-${{ github.head_ref || github.ref }}
+  group: replica-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 jobs:
   replica:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        proxy: ["nginx", "direct"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -21,12 +25,12 @@ jobs:
           python-version: '3.12'
       - name: Operator security and backup validation
         run: python deploy/replica/test_manage.py
-      - name: Actual images, database modes, HTTPS and restore
+      - name: Actual images, proxy mode, databases and restore
         env:
           REPLICA_REQUIRE_CGROUP: '1'
-        run: python deploy/replica/smoke.py --allow-disposable-docker
+        run: python deploy/replica/smoke.py --allow-disposable-docker --proxy ${{ matrix.proxy }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: replica-verification
-          path: artifacts/replica-smoke.json
+          name: replica-verification-${{ matrix.proxy }}
+          path: artifacts/replica-smoke-*.json

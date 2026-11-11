@@ -1,0 +1,14 @@
+{
+  "services": {
+    "web": {
+      "ports": [
+        "127.0.0.1:${REPLICA_DIRECT_WEB_PORT}:5173"
+      ]
+    },
+    "api": {
+      "ports": [
+        "127.0.0.1:${REPLICA_DIRECT_API_PORT}:8000"
+      ]
+    }
+  }
+}

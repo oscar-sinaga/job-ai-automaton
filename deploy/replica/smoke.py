@@ -46,12 +46,16 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--allow-disposable-docker',action='store_true')
     parser.add_argument('--repo',type=Path,default=Path(__file__).resolve().parents[2])
+    parser.add_argument('--proxy',choices=['nginx','direct','none'],default='nginx')
     args=parser.parse_args()
     if not args.allow_disposable_docker:
         parser.error('Requires --allow-disposable-docker; never run against production Docker')
     root=args.repo.resolve()
     original=load(root/'deploy/replica/manage.py')
     kind=json.loads((root/'deploy/replica/app.json').read_text())['kind']
+    proxy='none' if kind=='scraper' else args.proxy
+    if proxy=='none' and kind!='scraper':
+        parser.error('Web apps use nginx or direct')
     original.run([sys.executable,str(root/'deploy/replica/test_manage.py')])
     work=Path(tempfile.mkdtemp(prefix='oscar-replica-test-'))
     checkout=work/'source'
@@ -63,9 +67,16 @@ def main():
     with socket.socket() as s:
         s.bind(('127.0.0.1',0))
         port=s.getsockname()[1]
-    origin=f'https://localhost:{port}'
+    with socket.socket() as s:
+        s.bind(('127.0.0.1',0))
+        api_port=s.getsockname()[1]
+    if api_port==port:
+        raise RuntimeError('Temporary web/API port collision; rerun the disposable test')
+    origin=f'http://127.0.0.1:{port}' if proxy=='direct' else f'https://localhost:{port}'
+    api_origin=f'http://127.0.0.1:{api_port}' if proxy=='direct' else origin
     init=argparse.Namespace(project=project,origin=origin,database='new',db_name=None,db_user=None,
-                            db_host=None,db_port=5432,db_sslmode='disable',db_admin_user=None,with_browser=False)
+                            db_host=None,db_port=5432,db_sslmode='disable',db_admin_user=None,with_browser=False,
+                            proxy=proxy,direct_api_port=api_port)
     with patch.object(getpass,'getpass',return_value=PASSWORD), contextlib.redirect_stdout(io.StringIO()):
         m.initialize(init)
     settings=m.configuration()
@@ -78,16 +89,20 @@ def main():
         f=work/'offline-scheduler.json'
         f.write_text(json.dumps(override))
         cmd+=['-f',str(f)]
-    report={'kind':kind,'new_database':False,'existing_database':False,'https':False,
+    report={'kind':kind,'proxy':proxy,'new_database':False,'existing_database':False,'https':False,'http_loopback':False,
             'backup_restore':False,'resource_enforced':False,'production_changed':False}
     e,ec=None,None
     try:
         resolved=json.loads(m.run(cmd+['config','--format','json']).stdout)
         for name,service in resolved['services'].items():
             assert service.get('mem_limit') and service.get('cpus') and service.get('pids_limit'),name
-            if name!='edge':
+            if proxy=='direct' and name in ('web','api'):
+                assert all(p['host_ip']=='127.0.0.1' for p in service.get('ports',[])),name
+            elif name!='edge':
                 assert not service.get('ports'),name
-        if kind!='scraper':
+        if proxy=='direct':
+            assert 'edge' not in resolved['services']
+        if proxy=='nginx':
             tls=m.PRIVATE/'tls'
             m.run(['openssl','req','-x509','-newkey','rsa:2048','-nodes','-days','1','-subj','/CN=localhost',
                    '-addext','subjectAltName=DNS:localhost','-keyout',str(tls/'privkey.pem'),'-out',str(tls/'fullchain.pem')])
@@ -114,31 +129,46 @@ def main():
         if kind=='job':
             m.run(cmd+['exec','-T','api','python','-c',"from pathlib import Path; Path('/data/pdfs/replica-fixture.pdf').write_bytes(b'Synthetic backup fixture')"])
         if kind!='scraper':
-            context=ssl.create_default_context(cafile=str(m.PRIVATE/'tls/fullchain.pem'))
+            context=ssl.create_default_context(cafile=str(m.PRIVATE/'tls/fullchain.pem')) if proxy=='nginx' else None
             import http.cookiejar
             cookies=http.cookiejar.CookieJar()
             opener=urllib.request.build_opener(urllib.request.HTTPSHandler(context=context),urllib.request.HTTPCookieProcessor(cookies))
-            def request(path,data=None,headers=None):
+            def request(path,data=None,headers=None,base=None):
                 h={'Origin':origin,**(headers or {})}
                 if data is not None:
                     h['Content-Type']='application/json'
-                req=urllib.request.Request(origin+path,data=json.dumps(data).encode() if data is not None else None,headers=h)
+                req=urllib.request.Request((base or origin)+path,data=json.dumps(data).encode() if data is not None else None,headers=h)
                 with opener.open(req,timeout=30) as response:
                     return response.status,response.read()
             if kind=='job':
-                try:
-                    request('/jobs')
-                    raise AssertionError('Anonymous Job AI access was allowed')
-                except urllib.error.HTTPError as error:
-                    assert error.code==401
-                header={'Authorization':'Basic '+base64.b64encode(('oscar:'+PASSWORD).encode()).decode()}
+                header={}
+                if proxy=='nginx':
+                    try:
+                        request('/jobs')
+                        raise AssertionError('Anonymous Job AI access was allowed')
+                    except urllib.error.HTTPError as error:
+                        assert error.code==401
+                    header={'Authorization':'Basic '+base64.b64encode(('oscar:'+PASSWORD).encode()).decode()}
                 assert request('/jobs',headers=header)[0]==200
                 key=next(line.split('=',1)[1] for line in (m.PRIVATE/'app.env').read_text().splitlines() if line.startswith('OSCAR_API_KEY='))
-                assert request('/api/v1/jobs',headers={**header,'X-API-Key':key})[0]==200
+                assert request('/api/v1/jobs',headers={**header,'X-API-Key':key},base=api_origin)[0]==200
+                if proxy=='direct':
+                    try:
+                        request('/api/v1/jobs',base=api_origin)
+                        raise AssertionError('Direct API accepted a request without an API key')
+                    except urllib.error.HTTPError as error:
+                        assert error.code==401
             elif kind=='decision':
                 assert request('/login')[0]==200
-                status,payload=request('/backend/v1/auth/login',{'username':'oscar','password':PASSWORD})
+                path='/v1/auth/login' if proxy=='direct' else '/backend/v1/auth/login'
+                status,payload=request(path,{'username':'oscar','password':PASSWORD},base=api_origin)
                 assert status==200 and json.loads(payload)['access_token']
+                if proxy=='direct':
+                    preflight=urllib.request.Request(api_origin+'/v1/auth/login',method='OPTIONS',headers={
+                        'Origin':origin,'Access-Control-Request-Method':'POST',
+                        'Access-Control-Request-Headers':'content-type,authorization'})
+                    with opener.open(preflight,timeout=15) as response:
+                        assert response.headers['Access-Control-Allow-Origin']==origin
             else:
                 assert request('/healthz')[0]==200
                 try:
@@ -149,7 +179,8 @@ def main():
                 assert request('/api/auth/login',{'username':'oscar','password':PASSWORD})[0]==200
                 assert request('/api/admin/users')[0]==200
                 assert request('/api/state')[0]==200
-            report['https']=True
+            report['https']=proxy=='nginx'
+            report['http_loopback']=proxy=='direct'
         else:
             result=m.db_run(cmd,['psql','-X','-Atqc',"SELECT count(*) FROM information_schema.tables WHERE table_schema='scraping'"])
             assert int(result.stdout)==10
@@ -182,7 +213,9 @@ def main():
         ei.database='existing'; ei.project=project+'-existing'; ei.db_host='db'
         ei.db_network=project+'_database'; ei.db_network_owner=project
         ei.db_admin_user=owner['PGUSER'] if kind=='scraper' else None
-        answers=[values['PGPASSWORD'],PASSWORD]
+        answers=[values['PGPASSWORD']]
+        if kind in ('acc','decision') or kind=='job' and proxy=='nginx':
+            answers.append(PASSWORD)
         if kind=='scraper':
             answers.append(owner['PGPASSWORD'])
         with patch.object(getpass,'getpass',side_effect=answers),contextlib.redirect_stdout(io.StringIO()):
@@ -198,14 +231,14 @@ def main():
         assert refusal.returncode!=0
         assert m.run(cmd+['ps','-q']).stdout==before
         print(json.dumps(report),flush=True)
-        artifact=root/'artifacts/replica-smoke.json'
+        artifact=root/'artifacts'/('replica-smoke-'+proxy+'.json')
         artifact.parent.mkdir(exist_ok=True)
         artifact.write_text(json.dumps(report,indent=2)+'\n')
     except BaseException:
         print('Replica smoke failed for '+kind+'. Disposable source: '+str(checkout),file=sys.stderr)
         # IDs/status contain no environment values or application payloads.
         print(m.run(cmd+['ps','-a'],check=False).stdout.decode(),file=sys.stderr)
-        if kind!='scraper':
+        if proxy=='nginx':
             # The edge logs no request URLs/auth values and has no application secrets.
             print(m.run(cmd+['logs','--no-color','--tail','20','edge'],check=False).stdout.decode(),file=sys.stderr)
         raise

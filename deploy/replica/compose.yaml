@@ -163,7 +163,10 @@
         "web": {
           "condition": "service_healthy"
         }
-      }
+      },
+      "profiles": [
+        "nginx"
+      ]
     },
     "api": {
       "mem_limit": "256m",
